@@ -14,10 +14,11 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 
-from config import RANDOM_STATE, CV_FOLDS, RESULTS_DIR
+from config import RANDOM_STATE, CV_FOLDS, RESULTS_DIR, PLOTS_DIR
 
 RESULTS_DIR.mkdir(exist_ok=True)
-plt.rcParams["figure.dpi"] = 120
+PLOTS_DIR.mkdir(exist_ok=True)
+plt.rcParams["figure.dpi"] = 150
 sns.set_theme(style="whitegrid", palette="muted")
 
 RULE_BASED_NAMES = {"RuleFit", "GreedyRuleList", "BayesianRuleList", "FIGS", "SkopeRules"}
@@ -78,7 +79,7 @@ def plot_eda(X: pd.DataFrame, y: pd.Series, binary_features: list[str]) -> None:
     df["DEATH_EVENT"] = y.values
 
     # Continuous feature distributions
-    fig, axes = plt.subplots(2, 4, figsize=(16, 8))
+    fig, axes = plt.subplots(4, 2, figsize=(8, 11))
     axes = axes.flatten()
     for i, feat in enumerate(continuous):
         for label, color in zip([0, 1], ["steelblue", "tomato"]):
@@ -93,18 +94,18 @@ def plot_eda(X: pd.DataFrame, y: pd.Series, binary_features: list[str]) -> None:
         axes[j].set_visible(False)
     plt.suptitle("Distribuzione feature continue per classe", fontweight="bold")
     plt.tight_layout()
-    plt.savefig(RESULTS_DIR / "eda_continuous.png")
+    plt.savefig(PLOTS_DIR / "eda_continuous.png")
     plt.close()
 
     # Correlation heatmap
-    fig, ax = plt.subplots(figsize=(11, 9))
+    fig, ax = plt.subplots(figsize=(8, 8))
     corr = df.corr(numeric_only=True)
     mask = np.triu(np.ones_like(corr, dtype=bool))
     sns.heatmap(corr, mask=mask, annot=True, fmt=".2f",
                 cmap="RdBu_r", center=0, ax=ax, linewidths=0.5, square=True)
     ax.set_title("Matrice di correlazione", fontweight="bold")
     plt.tight_layout()
-    plt.savefig(RESULTS_DIR / "eda_correlation.png")
+    plt.savefig(PLOTS_DIR / "eda_correlation.png")
     plt.close()
 
     print("EDA plots saved to results/")
@@ -120,7 +121,7 @@ def plot_metrics_comparison(df: pd.DataFrame) -> None:
     plot_df = pd.concat([rule_rows, ens_rows])
     n_rule = len(rule_rows)
 
-    fig, ax = plt.subplots(figsize=(13, 5))
+    fig, ax = plt.subplots(figsize=(10, 6))
     x = np.arange(len(plot_df))
     width = 0.15
     colors = ["#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B2"]
@@ -141,13 +142,13 @@ def plot_metrics_comparison(df: pd.DataFrame) -> None:
         ax.text(n_rule + (len(plot_df) - n_rule) / 2 - 0.5, 1.04, "Ensemble", ha="center", color="gray")
 
     plt.tight_layout()
-    plt.savefig(RESULTS_DIR / "metrics_comparison.png")
+    plt.savefig(PLOTS_DIR / "metrics_comparison.png")
     plt.close()
     print("Saved: results/metrics_comparison.png")
 
 
 def plot_roc_curves(results: list[dict], y_test: np.ndarray) -> None:
-    fig, ax = plt.subplots(figsize=(7, 6))
+    fig, ax = plt.subplots(figsize=(8, 8))
     colors = ["#4C72B0", "#55A868", "#DD8452", "#C44E52", "#8172B2",
               "#937860", "#DA8BC3", "#8C8C8C"]
     linestyles = ["-", "--", "-.", ":", "-", "--", "-.", ":"]
@@ -165,16 +166,16 @@ def plot_roc_curves(results: list[dict], y_test: np.ndarray) -> None:
     ax.set_title("Curve ROC — confronto modelli", fontweight="bold")
     ax.legend(loc="lower right", fontsize=8)
     plt.tight_layout()
-    plt.savefig(RESULTS_DIR / "roc_curves.png")
+    plt.savefig(PLOTS_DIR / "roc_curves.png")
     plt.close()
     print("Saved: results/roc_curves.png")
 
 
 def plot_confusion_matrices(results: list[dict], y_test: np.ndarray) -> None:
     n = len(results)
-    cols = 4
+    cols = 2
     rows = (n + cols - 1) // cols
-    fig, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * 4.5, rows * 3))
     axes = axes.flatten()
 
     for i, r in enumerate(results):
@@ -192,7 +193,7 @@ def plot_confusion_matrices(results: list[dict], y_test: np.ndarray) -> None:
 
     plt.suptitle("Matrici di Confusione — Test Set", fontweight="bold", y=1.01)
     plt.tight_layout()
-    plt.savefig(RESULTS_DIR / "confusion_matrices.png")
+    plt.savefig(PLOTS_DIR / "confusion_matrices.png")
     plt.close()
     print("Saved: results/confusion_matrices.png")
 
@@ -206,33 +207,33 @@ def plot_rulefit_rules(rulefit_model) -> None:
     def shorten(s, n=60):
         return s[:n] + "..." if len(s) > n else s
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9, 10))
     ax1.barh(range(len(top_pos)), top_pos["coef"], color="tomato")
     ax1.set_yticks(range(len(top_pos)))
-    ax1.set_yticklabels([shorten(r) for r in top_pos["rule"]], fontsize=8)
-    ax1.set_title("RuleFit — Regole pro DECESSO", fontweight="bold")
+    ax1.set_yticklabels([shorten(r) for r in top_pos["rule"]], fontsize=9)
+    ax1.set_title("RuleFit — Regole pro DECESSO", fontweight="bold", fontsize=11)
     ax1.set_xlabel("Coefficiente")
 
     ax2.barh(range(len(top_neg)), top_neg["coef"], color="steelblue")
     ax2.set_yticks(range(len(top_neg)))
-    ax2.set_yticklabels([shorten(r) for r in top_neg["rule"]], fontsize=8)
-    ax2.set_title("RuleFit — Regole pro SOPRAVVIVENZA", fontweight="bold")
+    ax2.set_yticklabels([shorten(r) for r in top_neg["rule"]], fontsize=9)
+    ax2.set_title("RuleFit — Regole pro SOPRAVVIVENZA", fontweight="bold", fontsize=11)
     ax2.set_xlabel("Coefficiente")
 
     plt.tight_layout()
-    plt.savefig(RESULTS_DIR / "rulefit_rules.png")
+    plt.savefig(PLOTS_DIR / "rulefit_rules.png")
     plt.close()
     print("Saved: results/rulefit_rules.png")
 
 
 def plot_feature_importance(rf_model, feature_names: list[str]) -> None:
     fi = pd.Series(rf_model.feature_importances_, index=feature_names).sort_values()
-    fig, ax = plt.subplots(figsize=(8, 4))
+    fig, ax = plt.subplots(figsize=(7, 9))
     fi.plot(kind="barh", ax=ax, color="steelblue", alpha=0.8)
     ax.set_title("Random Forest — Feature Importance (MDI)", fontweight="bold")
     ax.set_xlabel("Importance")
     plt.tight_layout()
-    plt.savefig(RESULTS_DIR / "feature_importance_rf.png")
+    plt.savefig(PLOTS_DIR / "feature_importance_rf.png")
     plt.close()
     print("Saved: results/feature_importance_rf.png")
 
@@ -258,7 +259,7 @@ def run_cross_validation(cv_entries: list[dict], y_train: np.ndarray) -> None:
     colors = ["#4C72B0" if n in RULE_BASED_NAMES else "#DD8452" for n in names]
     data_to_plot = [cv_scores[n] for n in names]
 
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig, ax = plt.subplots(figsize=(9, 9))
     bp = ax.boxplot(data_to_plot, patch_artist=True)
     ax.set_xticks(range(1, len(names) + 1))
     ax.set_xticklabels(names)
@@ -275,6 +276,6 @@ def run_cross_validation(cv_entries: list[dict], y_train: np.ndarray) -> None:
         ax.axvline(x=n_rule + 0.5, color="gray", linestyle="--", alpha=0.6)
     plt.xticks(rotation=30, ha="right")
     plt.tight_layout()
-    plt.savefig(RESULTS_DIR / "cross_validation.png")
+    plt.savefig(PLOTS_DIR / "cross_validation.png")
     plt.close()
     print("Saved: results/cross_validation.png")
