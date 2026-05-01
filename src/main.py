@@ -16,6 +16,7 @@ from evaluate import (
     plot_feature_importance, run_cross_validation,
 )
 from config import BINARY_FEATURES
+from report import generate_report
 
 
 def main():
@@ -116,6 +117,7 @@ def main():
     ]
     run_cross_validation(cv_entries, data.y_train)
 
+    generate_report()
     print("\n✓ Pipeline completed. All outputs saved in results/")
 
 

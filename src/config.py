@@ -7,6 +7,7 @@ CV_FOLDS = 10
 _ROOT = Path(__file__).parent.parent
 DATA_DIR = _ROOT / "data"
 RESULTS_DIR = _ROOT / "results"
+PLOTS_DIR   = RESULTS_DIR / "plots"
 
 # Rule-based hyperparams
 RULEFIT_MAX_RULES = 30
