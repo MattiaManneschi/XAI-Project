@@ -131,7 +131,8 @@ def _page_toc(pdf: PdfPages) -> None:
         ("3.4", "Interpretabilità — Regole RuleFit", 15),
         ("3.5", "Interpretabilità — Feature Importance RF", 16),
         ("3.6", "Cross-Validation 10-fold", 17),
-        ("3.7", "Conclusioni", 18),
+        ("4.", "Conclusioni", None),
+        ("4.1", "Confronto, analisi clinica e limiti", 18),
     ]
 
     y = 0.645
@@ -180,7 +181,8 @@ def _page_intro(pdf: PdfPages) -> None:
          "Il Capitolo 1 introduce il problema clinico, descrive il dataset e presenta l'analisi "
          "esplorativa. Il Capitolo 2 illustra l'architettura del progetto, la pipeline di "
          "elaborazione dei dati, i modelli utilizzati e la loro configurazione. Il Capitolo 3 "
-         "presenta i risultati, il confronto delle performance e le conclusioni."),
+         "presenta i risultati e il confronto delle performance. Il Capitolo 4 raccoglie le "
+         "conclusioni, l'analisi clinica dei risultati e i limiti del lavoro."),
     ])
     pdf.savefig(fig)
     plt.close(fig)
@@ -339,13 +341,6 @@ def _page_data_pipeline(pdf: PdfPages) -> None:
     fig = _new_fig()
     _add_header(fig, "2.2 · Architettura e Implementazione", "Pipeline di Elaborazione dei Dati")
     _write_paragraphs(fig, [
-        ("Acquisizione e caching",
-         "Il dataset viene scaricato dal repository UCI tramite la libreria ucimlrepo "
-         "(fetch_ucirepo(id=519)). Per evitare download ripetuti, feature e target vengono "
-         "serializzati in data/X.csv e data/y.csv alla prima esecuzione; le esecuzioni "
-         "successive caricano direttamente i file locali. Su macOS con Python 3.14 è "
-         "necessario un fix esplicito dei certificati SSL tramite la libreria certifi, "
-         "applicato a livello di modulo in data_loader.py."),
         ("Split stratificato",
          "Il dataset viene diviso in training (80%, 239 campioni) e test (20%, 60 campioni) "
          "con train_test_split(stratify=y): la stratificazione garantisce che entrambe le parti "
@@ -451,11 +446,6 @@ def _page_models_ensemble(pdf: PdfPages) -> None:
          "gestione nativa dei valori mancanti e parallelismo. Parametro scale_pos_weight "
          "impostato automaticamente per bilanciare le classi in base alla distribuzione "
          "del training set."),
-        ("Preprocessing",
-         "I modelli ensemble non richiedono standardizzazione delle feature. Le variabili "
-         "continue e binarie sono passate direttamente come array NumPy. Solo RuleFit "
-         "utilizza feature standardizzate (StandardScaler); BRL utilizza feature "
-         "discretizzate in bin binari (KBinsDiscretizer + one-hot encoding)."),
     ])
     pdf.savefig(fig)
     plt.close(fig)
@@ -646,40 +636,30 @@ def _page_interpretability(pdf: PdfPages) -> None:
 def _page_conclusions(pdf: PdfPages) -> None:
     csv_path = RESULTS_DIR / "metrics_summary.csv"
 
-    # ── Page 1: performance analysis + table ─────────────────────────────────
+    # ── Page 1 ────────────────────────────────────────────────────────────────
     fig = _new_fig()
-    _add_header(fig, "3.7 · Risultati", "Conclusioni")
+    _add_header(fig, "4 · Conclusioni", "Conclusioni")
 
     y = _write_paragraphs(fig, [
-        ("Trade-off interpretabilità vs performance",
-         "I modelli ensemble raggiungono performance superiori in ROC-AUC (Random Forest "
-         "0.901, XGBoost 0.851, Gradient Boosting 0.847) rispetto alla media dei modelli "
-         "rule-based, ma il divario non è netto: GreedyRuleList (0.885) e RuleFit (0.883) "
-         "sono competitivi e superano GradientBoosting e XGBoost. Questo risultato è "
-         "incoraggiante: su un dataset di soli 299 campioni, la semplicità strutturale dei "
-         "modelli a regole diventa un vantaggio, riducendo il rischio di overfitting."),
-        ("Analisi modello per modello",
-         "GreedyRuleList offre il miglior compromesso tra interpretabilità e performance "
-         "tra i modelli rule-based (AUC 0.885, F1 0.667): costruisce una lista ordinata di "
-         "condizioni che un clinico può seguire passo passo. RuleFit è il secondo miglior "
-         "rule-based (AUC 0.883, F1 0.645) e fornisce coefficienti espliciti per ogni regola, "
-         "utili per capire il peso relativo di ciascuna condizione. BayesianRuleList ha "
-         "recall elevata (0.842) a scapito della precisione (0.571): tende a sovrastimare i "
-         "decessi, il che in medicina è spesso preferibile a sottostimarli. FIGS ha le "
-         "performance più basse (AUC 0.767) ma produce una struttura ad albero additiva "
-         "particolarmente leggibile. SkopeRules presenta Precision=1.0 e Recall=0.263: "
-         "quando predice un decesso non sbaglia mai, ma identifica solo 5 pazienti su 19. "
-         "Questo comportamento estremo è by design — le soglie di accettazione delle regole "
-         "privilegiano la certezza sulla copertura."),
-        ("Rilevanza clinica di Precision vs Recall",
-         "In ambito clinico il trade-off tra precisione e recall non è neutro. Alta recall "
-         "(come in BayesianRuleList) minimizza i falsi negativi: meno pazienti a rischio "
-         "vengono erroneamente classificati come sani. Alta precisione (come in SkopeRules) "
-         "minimizza i falsi positivi: ogni allarme lanciato corrisponde a un caso realmente "
-         "critico. La scelta dipende dal contesto: per un triage di emergenza si preferisce "
-         "alta recall; per selezionare pazienti da sottoporre a procedure invasive si "
-         "preferisce alta precisione. L'analisi XAI permette di scegliere il modello giusto "
-         "con piena consapevolezza del suo comportamento decisionale."),
+        ("Confronto tra approcci",
+         "I modelli ensemble raggiungono ROC-AUC superiore (Random Forest 0.901, XGBoost 0.851) "
+         "ma il divario con i rule-based non è netto: GreedyRuleList (0.885) e RuleFit (0.883) "
+         "li superano entrambi. Su soli 299 campioni la semplicità strutturale dei modelli a "
+         "regole riduce il rischio di overfitting, risultando competitiva. GreedyRuleList offre "
+         "il miglior F1 rule-based (0.667) con una lista ordinata di condizioni leggibile da un "
+         "clinico. RuleFit assegna coefficienti espliciti a ogni regola, rendendo visibile il "
+         "peso relativo di ciascuna. BayesianRuleList privilegia il recall (0.842): sovrastima "
+         "i decessi, il che in medicina è spesso preferibile a sottostimarli. FIGS ha AUC più "
+         "basso (0.767) ma struttura additiva particolarmente trasparente. SkopeRules raggiunge "
+         "Precision=1.0 con Recall=0.263: non produce mai falsi positivi, ma identifica solo "
+         "5 deceduti su 19 — utile quando ogni allarme deve corrispondere a un caso realmente critico."),
+        ("Precision vs Recall in ambito clinico",
+         "Il trade-off tra precisione e recall non è neutro in contesti medici. Alta recall "
+         "minimizza i falsi negativi (morti non rilevate), che in clinica sono più pericolosi "
+         "dei falsi positivi (falsi allarmi). Alta precisione garantisce invece che ogni "
+         "segnalazione sia affidabile, preferibile quando si pianificano interventi invasivi. "
+         "La scelta del modello dipende quindi dal contesto d'uso, e la trasparenza dei modelli "
+         "rule-based è la condizione necessaria per fare questa scelta in modo consapevole."),
     ])
 
     if csv_path.exists():
@@ -704,43 +684,33 @@ def _page_conclusions(pdf: PdfPages) -> None:
     pdf.savefig(fig)
     plt.close(fig)
 
-    # ── Page 2: clinical interpretation + limitations ─────────────────────────
+    # ── Page 2 ────────────────────────────────────────────────────────────────
     fig2 = _new_fig()
-    _add_header(fig2, "3.7 · Risultati", "Conclusioni (continua)")
+    _add_header(fig2, "4 · Conclusioni", "Conclusioni (continua)")
 
     _write_paragraphs(fig2, [
-        ("Rilevanza clinica delle regole apprese",
-         "Le feature più ricorrenti nelle regole — time (tempo di follow-up), "
-         "serum_creatinine ed ejection_fraction — sono coerenti con la letteratura clinica "
-         "sull'insufficienza cardiaca. Un follow-up breve (time <= 73 giorni) è il "
-         "predittore più forte: indica che il paziente è deceduto precocemente o si trova "
-         "ancora in una fase acuta critica. Creatinina sierica elevata segnala insufficienza "
-         "renale, spesso comorbidità fatale nell'insufficienza cardiaca. Ejection fraction "
-         "bassa indica una ridotta capacità di pompa del ventricolo sinistro. L'allineamento "
-         "di queste regole con le conoscenze mediche consolidate costituisce una validazione "
-         "qualitativa dei modelli: non si limitano ad apprendere pattern statistici, ma "
-         "catturano relazioni fisiopatologiche reali e interpretabili dal clinico."),
-        ("Cross-validation e stabilità",
-         "La cross-validation a 10 fold mostra che Random Forest (AUC 0.918 ± 0.044) e "
-         "XGBoost (0.910 ± 0.049) sono i modelli più stabili. RuleFit raggiunge 0.884 ± 0.058, "
-         "un risultato competitivo considerando che è intrinsecamente interpretabile. "
-         "GreedyRuleList ottiene 0.843 ± 0.096: varianza elevata ma in linea con la complessità "
-         "del modello su fold piccoli. FIGS ha la varianza più alta (0.847 ± 0.110), indice di "
-         "sensibilità alla composizione dei fold. Da notare che imodels non imposta correttamente "
-         "il flag interno is_classifier su GreedyRuleList, rendendo incompatibile l'uso diretto "
-         "con il scorer standard di scikit-learn; il problema è stato risolto con un custom "
-         "scorer che chiama predict_proba direttamente, bypassando il controllo."),
+        ("Validazione qualitativa delle regole",
+         "Le feature più ricorrenti — time (follow-up), serum_creatinine ed ejection_fraction "
+         "— sono coerenti con la letteratura clinica sull'insufficienza cardiaca: follow-up "
+         "breve segnala una fase acuta critica, creatinina alta indica insufficienza renale "
+         "spesso letale in questo contesto, ejection fraction bassa riflette ridotta capacità "
+         "di pompa. Il fatto che i modelli apprendano autonomamente queste relazioni costituisce "
+         "una validazione qualitativa: catturano pattern fisiopatologici reali, non solo "
+         "correlazioni statistiche."),
+        ("Stabilità in cross-validation",
+         "Random Forest (0.918 ± 0.044) e XGBoost (0.910 ± 0.049) sono i modelli più stabili. "
+         "RuleFit raggiunge 0.884 ± 0.058 — il miglior risultato tra i rule-based in CV e "
+         "competitivo con gli ensemble. GreedyRuleList ottiene 0.843 ± 0.096, con varianza "
+         "più alta ma attesa su fold di circa 24 campioni. FIGS ha la varianza maggiore "
+         "(0.847 ± 0.110), indice di instabilità strutturale su dataset piccoli."),
         ("Limiti e sviluppi futuri",
-         "Con 299 campioni il test set è composto da soli 60 pazienti (19 deceduti): "
-         "basta un singolo caso classificato diversamente per variare F1 di oltre 0.05. "
-         "I risultati sono quindi indicativi e non generalizzabili senza validazione su "
-         "coorti esterne. Per un impiego clinico reale sarebbe necessario: validare i modelli "
-         "su dataset indipendenti di diverse popolazioni; valutare la calibrazione delle "
-         "probabilità predette (non solo l'ordinamento); integrare l'output del modello in "
-         "un sistema di supporto decisionale con supervisione medica. L'approccio XAI "
-         "rimane comunque fondamentale in questo contesto: la trasparenza delle regole "
-         "consente al clinico di verificare, correggere e fidarsi del sistema in modo "
-         "informato, condizione necessaria per l'adozione in ambienti ad alta criticità."),
+         "Con 60 campioni nel test set (19 deceduti) ogni metrica è soggetta ad alta varianza: "
+         "un solo paziente classificato diversamente sposta F1 di oltre 0.05. I risultati sono "
+         "quindi indicativi e richiedono validazione su coorti esterne prima di qualsiasi "
+         "applicazione clinica. Ulteriori sviluppi potrebbero includere la calibrazione delle "
+         "probabilità predette e l'integrazione in un sistema di supporto decisionale con "
+         "supervisione medica — contesto in cui la trasparenza dei modelli rule-based resta "
+         "il requisito imprescindibile."),
     ])
 
     pdf.savefig(fig2)
