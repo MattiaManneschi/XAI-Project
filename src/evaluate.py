@@ -238,6 +238,13 @@ def plot_feature_importance(rf_model, feature_names: list[str]) -> None:
     print("Saved: results/feature_importance_rf.png")
 
 
+def _proba_roc_auc_scorer(estimator, X, y):
+    """Custom scorer that calls predict_proba directly, bypassing sklearn's
+    is_classifier() check (needed for GreedyRuleListClassifier)."""
+    y_prob = estimator.predict_proba(X)[:, 1]
+    return roc_auc_score(y, y_prob)
+
+
 def run_cross_validation(cv_entries: list[dict], y_train: np.ndarray) -> None:
     """cv_entries: list of {'name': str, 'model': ..., 'X': ndarray}"""
     cv = StratifiedKFold(n_splits=CV_FOLDS, shuffle=True, random_state=RANDOM_STATE)
@@ -249,7 +256,7 @@ def run_cross_validation(cv_entries: list[dict], y_train: np.ndarray) -> None:
             warnings.simplefilter("ignore")
             scores = cross_val_score(
                 entry["model"], entry["X"], y_train,
-                cv=cv, scoring="roc_auc", n_jobs=-1,
+                cv=cv, scoring=_proba_roc_auc_scorer, n_jobs=-1,
             )
         cv_scores[entry["name"]] = scores
         print(f"  {entry['name']:22s}  {scores.mean():.4f} ± {scores.std():.4f}")
