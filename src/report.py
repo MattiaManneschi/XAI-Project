@@ -13,7 +13,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 from config import RESULTS_DIR, PLOTS_DIR, DATA_DIR
 
-REPORT_PATH = RESULTS_DIR / "report.pdf"
+REPORT_PATH = RESULTS_DIR / "report"
 
 TITLE_COLOR  = "#1a1a2e"
 ACCENT_COLOR = "#4C72B0"
