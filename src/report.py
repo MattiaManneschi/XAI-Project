@@ -145,13 +145,13 @@ def _page_toc(pdf: PdfPages) -> None:
         weight = "bold" if is_chapter else "normal"
         color = TITLE_COLOR if is_chapter else "#333333"
         if is_chapter:
-            y -= 0.010
+            y -= 0.006
         fig.text(indent, y, f"{num}  {title}", fontsize=size,
                  fontweight=weight, color=color, va="top")
         if page is not None:
             fig.text(1 - L_MARGIN, y, str(page), fontsize=9.5,
                      color="#888888", va="top", ha="right")
-        y -= 0.042 if is_chapter else 0.033
+        y -= 0.034 if is_chapter else 0.027
 
     pdf.savefig(fig)
     plt.close(fig)
@@ -593,47 +593,55 @@ def _page_cm(pdf: PdfPages) -> None:
     plt.close(fig)
 
 
-def _page_interpretability(pdf: PdfPages) -> None:
-    pages = [
-        (
-            "rulefit_rules.png", "3.4 · Risultati", "Interpretabilità — Regole RuleFit",
-            "RuleFit assegna a ogni regola estratta un coefficiente tramite regressione Lasso: "
-            "coefficiente positivo (barre rosse, grafico superiore) significa che quella condizione "
-            "aumenta la probabilità di decesso; negativo (blu, inferiore) la diminuisce. Le regole "
-            "più influenti nel predire il decesso coinvolgono time basso e serum_creatinine alta, "
-            "confermando i pattern dell'EDA. Le regole pro-sopravvivenza implicano ejection_fraction "
-            "più alta e follow-up lungo. La penalizzazione Lasso azzera i coefficienti delle regole "
-            "ridondanti, mantenendo solo quelle con effetto reale sulla predizione.",
-        ),
-        (
-            "feature_importance_rf.png", "3.6 · Risultati", "Interpretabilità — Feature Importance RF",
-            "L'importanza MDI (Mean Decrease in Impurity) misura di quanto ogni feature riduce "
-            "l'impurità media nei nodi degli alberi del Random Forest: valori più alti indicano "
-            "feature più utilizzate e discriminative. time domina nettamente, seguita da "
-            "serum_creatinine ed ejection_fraction — le stesse tre variabili che emergono dalle "
-            "regole di RuleFit e GreedyRuleList: una validazione incrociata tra approcci molto "
-            "diversi. Le feature binarie (anaemia, diabetes, sex, smoking) hanno importanza "
-            "marginale, coerente con le basse correlazioni dell'EDA.",
-        ),
-        (
-            "cross_validation.png", "3.7 · Risultati", "Cross-Validation 10-fold",
-            "Il boxplot mostra la distribuzione del ROC-AUC su 10 fold stratificati: mediana, "
-            "IQR (bordi del box) e range (baffi). La stratificazione garantisce che ogni fold "
-            "mantenga la stessa proporzione di deceduti (~32%) del dataset completo, rendendo "
-            "la stima più affidabile. Random Forest ha la mediana più alta e IQR contenuto: "
-            "performance stabile e consistente tra i fold. RuleFit è il miglior rule-based in CV. "
-            "FIGS mostra alta varianza — instabile su dataset piccoli. GreedyRuleList ottiene "
-            "0.843 ± 0.096 tramite un custom scorer che aggira un'incompatibilità con l'API sklearn.",
-        ),
-    ]
-    for img_file, section, title, description in pages:
-        fig = _new_fig()
-        _add_header(fig, section, title)
-        ax = fig.add_axes((0.04, 0.24, 0.92, 0.65))
-        _embed_image(ax, PLOTS_DIR / img_file)
-        _add_description(fig, description)
-        pdf.savefig(fig)
-        plt.close(fig)
+def _page_rulefit_rules(pdf: PdfPages) -> None:
+    fig = _new_fig()
+    _add_header(fig, "3.4 · Risultati", "Interpretabilità — Regole RuleFit")
+    ax = fig.add_axes((0.04, 0.24, 0.92, 0.65))
+    _embed_image(ax, PLOTS_DIR / "rulefit_rules.png")
+    _add_description(fig,
+        "RuleFit assegna a ogni regola estratta un coefficiente tramite regressione Lasso: "
+        "coefficiente positivo (barre rosse, grafico superiore) significa che quella condizione "
+        "aumenta la probabilità di decesso; negativo (blu, inferiore) la diminuisce. Le regole "
+        "più influenti nel predire il decesso coinvolgono time basso e serum_creatinine alta, "
+        "confermando i pattern dell'EDA. Le regole pro-sopravvivenza implicano ejection_fraction "
+        "più alta e follow-up lungo. La penalizzazione Lasso azzera i coefficienti delle regole "
+        "ridondanti, mantenendo solo quelle con effetto reale sulla predizione.")
+    pdf.savefig(fig)
+    plt.close(fig)
+
+
+def _page_feature_importance(pdf: PdfPages) -> None:
+    fig = _new_fig()
+    _add_header(fig, "3.6 · Risultati", "Interpretabilità — Feature Importance RF")
+    ax = fig.add_axes((0.04, 0.24, 0.92, 0.65))
+    _embed_image(ax, PLOTS_DIR / "feature_importance_rf.png")
+    _add_description(fig,
+        "L'importanza MDI (Mean Decrease in Impurity) misura di quanto ogni feature riduce "
+        "l'impurità media nei nodi degli alberi del Random Forest: valori più alti indicano "
+        "feature più utilizzate e discriminative. time domina nettamente, seguita da "
+        "serum_creatinine ed ejection_fraction — le stesse tre variabili che emergono dalle "
+        "regole di RuleFit e GreedyRuleList: una validazione incrociata tra approcci molto "
+        "diversi. Le feature binarie (anaemia, diabetes, sex, smoking) hanno importanza "
+        "marginale, coerente con le basse correlazioni dell'EDA.")
+    pdf.savefig(fig)
+    plt.close(fig)
+
+
+def _page_crossval(pdf: PdfPages) -> None:
+    fig = _new_fig()
+    _add_header(fig, "3.7 · Risultati", "Cross-Validation 10-fold")
+    ax = fig.add_axes((0.04, 0.24, 0.92, 0.65))
+    _embed_image(ax, PLOTS_DIR / "cross_validation.png")
+    _add_description(fig,
+        "Il boxplot mostra la distribuzione del ROC-AUC su 10 fold stratificati: mediana, "
+        "IQR (bordi del box) e range (baffi). La stratificazione garantisce che ogni fold "
+        "mantenga la stessa proporzione di deceduti (~32%) del dataset completo, rendendo "
+        "la stima più affidabile. Random Forest ha la mediana più alta e IQR contenuto: "
+        "performance stabile e consistente tra i fold. RuleFit è il miglior rule-based in CV. "
+        "FIGS mostra alta varianza — instabile su dataset piccoli. GreedyRuleList ottiene "
+        "0.843 ± 0.096 tramite un custom scorer che aggira un'incompatibilità con l'API sklearn.")
+    pdf.savefig(fig)
+    plt.close(fig)
 
 
 def _page_rules_complete(pdf: PdfPages) -> None:
@@ -771,6 +779,75 @@ def _page_conclusions(pdf: PdfPages) -> None:
     plt.close(fig2)
 
 
+# ── PDF post-processing (page numbers + clickable TOC links) ─────────────────
+
+def _postprocess_pdf(path) -> None:
+    try:
+        import fitz
+    except ImportError:
+        print("PyMuPDF not available — skipping PDF postprocessing")
+        return
+    import os
+
+    doc = fitz.open(str(path))
+
+    # 1. Page numbers at the bottom center of every page
+    for i in range(doc.page_count):
+        page = doc[i]
+        r = page.rect
+        page.insert_textbox(
+            fitz.Rect(0, r.height - 28, r.width, r.height - 6),
+            str(i + 1),
+            fontsize=9,
+            color=(0.55, 0.55, 0.55),
+            align=1,  # center
+        )
+
+    # 2. Clickable link annotations on TOC page (index 0)
+    # Each tuple: (section_num, target_page_1indexed, is_chapter)
+    # Chapters link to their first page even though no page number is displayed.
+    toc_links = [
+        ("1.",  2,  True),
+        ("1.1", 2,  False), ("1.2", 3,  False), ("1.3", 4,  False), ("1.4", 5,  False),
+        ("2.",  6,  True),
+        ("2.1", 6,  False), ("2.2", 7,  False), ("2.3", 9,  False),
+        ("2.4", 10, False), ("2.5", 11, False),
+        ("3.",  12, True),
+        ("3.1", 12, False), ("3.2", 13, False), ("3.3", 14, False),
+        ("3.4", 15, False), ("3.5", 16, False), ("3.6", 17, False), ("3.7", 18, False),
+        ("4.",  19, True),
+        ("4.1", 19, False),
+    ]
+
+    toc_page = doc[0]
+    pw, ph = toc_page.rect.width, toc_page.rect.height
+
+    y = 0.645
+    for _, page_num, is_chapter in toc_links:
+        if is_chapter:
+            y -= 0.006  # pre-spacing before chapter heading
+
+        # Link rect: full width between margins, row height ~16 pt
+        top_pdf = (1.0 - y) * ph
+        left_pdf = L_MARGIN * pw
+        right_pdf = (1.0 - L_MARGIN) * pw
+        link_rect = fitz.Rect(left_pdf, top_pdf - 2, right_pdf, top_pdf + 14)
+        toc_page.insert_link({
+            "kind": fitz.LINK_GOTO,
+            "from": link_rect,
+            "page": page_num - 1,  # fitz uses 0-based page indices
+            "to": fitz.Point(0, 0),
+        })
+
+        y -= 0.034 if is_chapter else 0.027  # post-spacing
+
+    tmp = str(path) + ".tmp"
+    doc.save(tmp)
+    doc.close()
+    os.replace(tmp, str(path))
+    print("PDF postprocessed: page numbers and TOC links added.")
+
+
 # ── main ──────────────────────────────────────────────────────────────────────
 
 def generate_report() -> None:
@@ -789,8 +866,10 @@ def generate_report() -> None:
         _page_metrics(pdf)
         _page_roc(pdf)
         _page_cm(pdf)
-        _page_interpretability(pdf)
+        _page_rulefit_rules(pdf)
         _page_rules_complete(pdf)
+        _page_feature_importance(pdf)
+        _page_crossval(pdf)
         _page_conclusions(pdf)
 
         pdf.infodict().update({
@@ -799,6 +878,7 @@ def generate_report() -> None:
         })
 
     print(f"Report saved to {REPORT_PATH}")
+    _postprocess_pdf(REPORT_PATH)
 
 
 if __name__ == "__main__":
