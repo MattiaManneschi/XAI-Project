@@ -1,0 +1,1 @@
+[["time <= 73.500", "81.5%", "65"], ["serum_creatinine > 1.450", "46.9%", "32"], ["ejection_fraction <= 27.500", "29.4%", "17"], ["creatinine_phosphokinase > 2307.500", "25.0%", "8"], ["serum_creatinine <= 0.650", "50.0%", "2"], ["age > 79.000", "25.0%", "4"], ["DEFAULT (nessuna regola attivata)", "0.0%", "111"]]
