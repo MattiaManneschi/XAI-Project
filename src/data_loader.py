@@ -30,6 +30,7 @@ class PreparedData:
     X_train_disc: np.ndarray        # one-hot binary bins (for BayesianRuleList)
     X_test_disc: np.ndarray
     feature_names: list[str]
+    disc_feature_names: list[str]   # decoded names for each discretised column
     scale_pos_weight: float         # class imbalance weight for XGBoost
 
 
@@ -72,11 +73,18 @@ def prepare(X: pd.DataFrame, y: pd.Series) -> PreparedData:
     X_train_scaled = pd.DataFrame(scaler.fit_transform(X_train), columns=X.columns)
     X_test_scaled  = pd.DataFrame(scaler.transform(X_test),      columns=X.columns)
 
-    # BayesianRuleList requires strictly binary (0/1) features:
-    # onehot-dense produces one binary column per bin (12 features × 4 bins = 48 cols).
+    # BayesianRuleList requires strictly binary (0/1) features.
+    # Binary features produce 1 bin; continuous features produce 4 bins.
+    # Actual column count depends on the data (typically ~33, not 48).
     discretiser = KBinsDiscretizer(n_bins=4, encode="onehot-dense", strategy="quantile")
     X_train_disc = np.asarray(discretiser.fit_transform(X_train.values)).astype(int)
     X_test_disc  = np.asarray(discretiser.transform(X_test.values)).astype(int)
+
+    disc_feature_names: list[str] = []
+    for i, feat in enumerate(X.columns):
+        edges = discretiser.bin_edges_[i]
+        for j in range(len(edges) - 1):
+            disc_feature_names.append(f"{feat} ∈ ({edges[j]:.2f}, {edges[j+1]:.2f}]")
 
     scale_pos_weight = float((y_train == 0).sum() / (y_train == 1).sum())
 
@@ -94,5 +102,6 @@ def prepare(X: pd.DataFrame, y: pd.Series) -> PreparedData:
         X_train_disc=X_train_disc,
         X_test_disc=X_test_disc,
         feature_names=list(X.columns),
+        disc_feature_names=disc_feature_names,
         scale_pos_weight=scale_pos_weight,
     )

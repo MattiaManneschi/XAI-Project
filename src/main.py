@@ -1,5 +1,7 @@
 """Entry point: runs the full XAI pipeline end-to-end."""
 
+import json
+import re
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -15,7 +17,7 @@ from evaluate import (
     plot_confusion_matrices, plot_rulefit_rules,
     plot_feature_importance, run_cross_validation,
 )
-from config import BINARY_FEATURES
+from config import BINARY_FEATURES, RESULTS_DIR
 from report import generate_report
 
 
@@ -47,8 +49,21 @@ def main():
         data.X_test,  data.y_test,
         "GreedyRuleList",
     )
+    # Save and print decoded GRL rules
+    grl_rows = []
     print("\nGreedyRuleList rules:")
-    print(grl)
+    for i, rule in enumerate(grl.rules_[:-1]):
+        feat = data.feature_names[rule["index_col"]]
+        op   = "<=" if rule["flip"] else ">"
+        cond = f"{feat} {op} {rule['cutoff']:.3f}"
+        risk = f"{rule['val_right']:.1%}"
+        print(f"  Rule {i+1}: IF {cond}  →  {risk} risk  ({rule['num_pts_right']} pts)")
+        grl_rows.append([cond, risk, str(rule["num_pts_right"])])
+    default = grl.rules_[-1]
+    print(f"  Default: {default['val']:.1%} risk  ({default['num_pts']} pts)")
+    grl_rows.append(["DEFAULT (nessuna regola attivata)", f"{default['val']:.1%}", str(default["num_pts"])])
+    with open(RESULTS_DIR / "grl_rules.json", "w") as f:
+        json.dump(grl_rows, f)
 
     brl = build_bayesian_rule_list()
     r_brl = fit_and_score(
@@ -57,8 +72,30 @@ def main():
         data.X_test_disc,  data.y_test,
         "BayesianRuleList",
     )
-    print("\nBayesianRuleList rules:")
-    print(brl)
+    # Save and print decoded BRL rules
+    brl_rows = []
+    print("\nBayesianRuleList rules (decoded):")
+    for line in str(brl).splitlines():
+        m = re.search(r"X_(\d+)", line)
+        if m:
+            decoded = data.disc_feature_names[int(m.group(1))]
+            line = line.replace(m.group(0), decoded)
+        print(" ", line)
+        # Extract structured data for report table
+        m_if = re.search(
+            r"((?:ELSE )?IF|ELSE)\s*(.*?)(?:\s*THEN probability of class 1:\s*([\d.]+)%\s*\(([\d.]+)%-([\d.]+)%\))?$",
+            line.strip())
+        m_prob = re.search(r"probability of class 1:\s*([\d.]+)%\s*\(([\d.]+)%-([\d.]+)%\)", line)
+        if m_prob:
+            prob, lo, hi = m_prob.group(1), m_prob.group(2), m_prob.group(3)
+            if "ELSE" in line and "ELSE IF" not in line:
+                cond = "DEFAULT (nessuna regola attivata)"
+            else:
+                cond_m = re.search(r"IF\s+(.+?)\s+THEN", line)
+                cond = cond_m.group(1).replace(" > 0.5", "").strip() if cond_m else line.strip()
+            brl_rows.append([cond, f"{prob}%", f"{lo}%–{hi}%"])
+    with open(RESULTS_DIR / "brl_rules.json", "w") as f:
+        json.dump(brl_rows, f)
 
     figs = build_figs()
     r_figs = fit_and_score(
