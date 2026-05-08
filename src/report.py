@@ -1,5 +1,6 @@
 """Generate a detailed PDF report from the pipeline artefacts in results/."""
 
+import json
 import textwrap
 import pandas as pd
 import matplotlib
@@ -13,7 +14,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 from config import RESULTS_DIR, PLOTS_DIR, DATA_DIR
 
-REPORT_PATH = RESULTS_DIR / "report"
+REPORT_PATH = RESULTS_DIR / "Manneschi_XAI.pdf"
 
 TITLE_COLOR  = "#1a1a2e"
 ACCENT_COLOR = "#4C72B0"
@@ -129,10 +130,11 @@ def _page_toc(pdf: PdfPages) -> None:
         ("3.2", "Curve ROC", 13),
         ("3.3", "Matrici di Confusione", 14),
         ("3.4", "Interpretabilità — Regole RuleFit", 15),
-        ("3.5", "Interpretabilità — Feature Importance RF", 16),
-        ("3.6", "Cross-Validation 10-fold", 17),
+        ("3.5", "Regole Complete: GreedyRuleList e BayesianRuleList", 16),
+        ("3.6", "Interpretabilità — Feature Importance RF", 17),
+        ("3.7", "Cross-Validation 10-fold", 18),
         ("4.", "Conclusioni", None),
-        ("4.1", "Confronto, analisi clinica e limiti", 18),
+        ("4.1", "Confronto, analisi clinica e limiti", 19),
     ]
 
     y = 0.645
@@ -359,7 +361,8 @@ def _page_data_pipeline(pdf: PdfPages) -> None:
          "discretizzata usa KBinsDiscretizer(n_bins=4, encode='onehot-dense', "
          "strategy='quantile'): ogni feature continua viene suddivisa in 4 intervalli di "
          "uguale frequenza, ciascuno codificato come colonna binaria. Il risultato è un "
-         "array di 48 colonne binarie (12 feature x 4 bin), obbligatorio per "
+         "array di circa 33 colonne binarie (le feature continue producono 4 bin ciascuna, "
+         "le 5 binarie ne producono 1), obbligatorio per "
          "BayesianRuleList che per design accetta solo valori strettamente 0/1."),
     ])
     pdf.savefig(fig)
@@ -603,7 +606,7 @@ def _page_interpretability(pdf: PdfPages) -> None:
             "ridondanti, mantenendo solo quelle con effetto reale sulla predizione.",
         ),
         (
-            "feature_importance_rf.png", "3.5 · Risultati", "Interpretabilità — Feature Importance RF",
+            "feature_importance_rf.png", "3.6 · Risultati", "Interpretabilità — Feature Importance RF",
             "L'importanza MDI (Mean Decrease in Impurity) misura di quanto ogni feature riduce "
             "l'impurità media nei nodi degli alberi del Random Forest: valori più alti indicano "
             "feature più utilizzate e discriminative. time domina nettamente, seguita da "
@@ -613,7 +616,7 @@ def _page_interpretability(pdf: PdfPages) -> None:
             "marginale, coerente con le basse correlazioni dell'EDA.",
         ),
         (
-            "cross_validation.png", "3.6 · Risultati", "Cross-Validation 10-fold",
+            "cross_validation.png", "3.7 · Risultati", "Cross-Validation 10-fold",
             "Il boxplot mostra la distribuzione del ROC-AUC su 10 fold stratificati: mediana, "
             "IQR (bordi del box) e range (baffi). La stratificazione garantisce che ogni fold "
             "mantenga la stessa proporzione di deceduti (~32%) del dataset completo, rendendo "
@@ -631,6 +634,57 @@ def _page_interpretability(pdf: PdfPages) -> None:
         _add_description(fig, description)
         pdf.savefig(fig)
         plt.close(fig)
+
+
+def _page_rules_complete(pdf: PdfPages) -> None:
+    grl_path = RESULTS_DIR / "grl_rules.json"
+    brl_path = RESULTS_DIR / "brl_rules.json"
+    if not grl_path.exists() or not brl_path.exists():
+        return
+    with open(grl_path) as f:
+        grl_rows = json.load(f)
+    with open(brl_path) as f:
+        brl_rows = json.load(f)
+
+    fig = _new_fig()
+    _add_header(fig, "3.5 · Risultati", "Regole Complete: GreedyRuleList e BayesianRuleList")
+
+    # ── intro ─────────────────────────────────────────────────────────────────
+    y = _write_paragraphs(fig, [
+        ("GreedyRuleList",
+         "Lista ordinata di regole IF/THEN applicate in sequenza: il primo paziente che "
+         "soddisfa una condizione viene classificato immediatamente. P(decesso) indica la "
+         "probabilità stimata di decesso per i campioni che soddisfano la regola; "
+         "Campioni indica quanti pazienti del training set vengono classificati da quella regola."),
+    ], start_y=0.88)
+
+    # ── GRL table ─────────────────────────────────────────────────────────────
+    grl_h = 0.026 * (len(grl_rows) + 1)
+    grl_top = y - 0.01
+    ax_grl = fig.add_axes((L_MARGIN, grl_top - grl_h, 1 - 2 * L_MARGIN, grl_h))
+    df_grl = pd.DataFrame(grl_rows, columns=["Condizione", "P(decesso)", "Campioni"])
+    _render_table(ax_grl, df_grl, col_widths=[0.64, 0.18, 0.18])
+
+    # ── BRL section ───────────────────────────────────────────────────────────
+    brl_start = grl_top - grl_h - 0.01
+    y2 = _write_paragraphs(fig, [
+        ("BayesianRuleList",
+         "Lista IF/ELSE appresa tramite inferenza bayesiana (MCMC) su feature discretizzate "
+         "in bin. Ogni condizione 'feature ∈ (a, b]' indica che la feature cade in quell'intervallo. "
+         "P(decesso) è la probabilità posteriore con intervallo di credibilità al 95%."),
+    ], start_y=brl_start)
+
+    # ── BRL table ─────────────────────────────────────────────────────────────
+    brl_h = 0.026 * (len(brl_rows) + 1)
+    brl_top = y2 - 0.01
+    ax_brl = fig.add_axes((L_MARGIN, brl_top - brl_h, 1 - 2 * L_MARGIN, brl_h))
+    df_brl = pd.DataFrame(brl_rows, columns=["Condizione", "P(decesso)", "IC 95%"])
+    _render_table(ax_brl, df_brl, col_widths=[0.58, 0.20, 0.22])
+
+    pdf.savefig(fig)
+    plt.close(fig)
+
+
 
 
 def _page_conclusions(pdf: PdfPages) -> None:
@@ -736,6 +790,7 @@ def generate_report() -> None:
         _page_roc(pdf)
         _page_cm(pdf)
         _page_interpretability(pdf)
+        _page_rules_complete(pdf)
         _page_conclusions(pdf)
 
         pdf.infodict().update({
