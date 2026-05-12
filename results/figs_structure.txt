@@ -1,0 +1,14 @@
+FIGS:
+Tree 0 (leaf=0.43):
+   feature time <= 60.5
+      leaf = 0.68
+   feature time > 60.5
+      feature serum_creatinine <= 1.45
+         leaf = 0.12
+      feature serum_creatinine > 1.45
+         leaf = 0.41
+Tree 1 (leaf=0.19):
+   feature ejection_fraction <= 27.5
+      leaf = 0.31
+   feature ejection_fraction > 27.5
+      leaf = 0.08

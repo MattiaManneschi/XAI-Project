@@ -1,0 +1,1 @@
+[["time <= 26.0", "25"], ["time \u2208 (26.0, 52.4]", "23"], ["ejection_fraction <= 25.0 AND time \u2208 (52.4, 78.0]", "10"], ["serum_creatinine \u2208 (1.64, 2.1] AND age \u2208 (70.0, 75.0]", "3"], ["ejection_fraction \u2208 (40.0, 47.0] AND platelets \u2208 (221000.0, 241200.0]", "2"], ["DEFAULT", "176"]]
