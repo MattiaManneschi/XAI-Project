@@ -59,7 +59,7 @@ def _render_table(ax: Axes, df: pd.DataFrame, col_widths=None) -> None:
     tbl.auto_set_font_size(False)
     tbl.set_fontsize(8.5)
     tbl.scale(1, 1.6)
-    for (r, c), cell in tbl.get_celld().items():
+    for (r, _), cell in tbl.get_celld().items():
         if r == 0:
             cell.set_facecolor(ACCENT_COLOR)
             cell.set_text_props(color="white", fontweight="bold")
@@ -129,12 +129,12 @@ def _page_toc(pdf: PdfPages) -> None:
         ("3.1", "Metriche Comparative", 12),
         ("3.2", "Curve ROC", 13),
         ("3.3", "Matrici di Confusione", 14),
-        ("3.4", "Interpretabilità — Regole RuleFit", 15),
-        ("3.5", "Regole Complete: GreedyRuleList e BayesianRuleList", 16),
-        ("3.6", "Interpretabilità — Feature Importance RF", 17),
-        ("3.7", "Cross-Validation 10-fold", 18),
+        ("3.4", "Regole Complete: tutti i modelli interpretabili", 15),
+        ("3.5", "Cross-Validation 10-fold", 17),
+        ("3.6", "RF e GRL senza feature time", 18),
+        ("3.7", "Interpretabilità — Regole RuleFit e Feature Importance", 19),
         ("4.", "Conclusioni", None),
-        ("4.1", "Confronto, analisi clinica e limiti", 19),
+        ("4.1", "Confronto, analisi clinica e limiti", 21),
     ]
 
     y = 0.645
@@ -151,7 +151,7 @@ def _page_toc(pdf: PdfPages) -> None:
         if page is not None:
             fig.text(1 - L_MARGIN, y, str(page), fontsize=9.5,
                      color="#888888", va="top", ha="right")
-        y -= 0.034 if is_chapter else 0.027
+        y -= 0.032 if is_chapter else 0.025
 
     pdf.savefig(fig)
     plt.close(fig)
@@ -397,29 +397,28 @@ def _page_models_rules(pdf: PdfPages) -> None:
     _add_header(fig, "2.3 · Architettura e Implementazione", "Modelli Interpretabili Basati su Regole")
     _write_paragraphs(fig, [
         ("",
-         "I modelli basati su regole producono predizioni nella forma di liste di condizioni "
-         "if-then direttamente leggibili. Ogni regola può essere validata da un esperto di "
-         "dominio senza strumenti aggiuntivi."),
+         "I modelli basati su regole producono predizioni if-then direttamente leggibili da un "
+         "esperto di dominio, senza richiedere strumenti post-hoc aggiuntivi."),
         ("RuleFit",
-         "Estrae regole da un ensemble di alberi, poi allena una regressione lineare penalizzata "
-         "(Lasso) sui valori delle regole. Il coefficiente di ogni regola indica il suo peso "
-         "nella predizione finale. Richiede feature standardizzate."),
+         "Estrae regole da un ensemble di alberi e le pondera con regressione Lasso. Il "
+         "coefficiente di ogni regola indica il suo contributo alla predizione; richiede feature standardizzate."),
         ("GreedyRuleList",
-         "Costruisce una lista ordinata di regole if-then in modo greedy, massimizzando ad ogni "
-         "passo la riduzione dell'impurità. La lista si legge dall'alto verso il basso: si "
-         "applica la prima regola che si attiva sul campione."),
+         "Costruisce una lista ordinata di regole if-then in modo greedy. Si applica la prima "
+         "regola soddisfatta; se nessuna si attiva, vale la regola di default in fondo alla lista."),
         ("BayesianRuleList (BRL)",
-         "Apprende una lista di regole tramite inferenza Bayesiana (MCMC). Richiede feature "
-         "binarie: le variabili continue vengono discretizzate in bin (one-hot encoding) prima "
-         "del fitting. Produce liste compatte e altamente leggibili."),
+         "Apprende una lista di regole tramite MCMC su feature binarie. Le variabili continue "
+         "vengono discretizzate in bin prima del fitting; produce stime probabilistiche con IC al 95%."),
         ("FIGS — Fast Interpretable Greedy-Tree Sums",
-         "Il modello è una somma di piccoli alberi decisionali, ciascuno appreso in modo greedy "
-         "sui residui del passo precedente. Combina interpretabilità strutturale con una "
-         "capacità espressiva maggiore rispetto a un singolo albero."),
+         "Somma di piccoli alberi decisionali, ciascuno appreso greedy sui residui del precedente. "
+         "Struttura additiva trasparente con capacità espressiva maggiore di un singolo albero."),
         ("SkopeRules",
-         "Genera regole ad alta precisione e recall tramite sub-campionamenti ripetuti di "
-         "ensemble di alberi, poi de-duplica le regole simili. Ogni regola è corredata da "
-         "statistiche di precisione, recall e support sul training set."),
+         "Genera regole ad alta precisione tramite sub-campionamenti ripetuti di ensemble di alberi, "
+         "poi de-duplica quelle simili. Ogni regola è corredata da precisione, recall e support."),
+        ("RIPPER — Repeated Incremental Pruning to Produce Error Reduction",
+         "Apprende regole congiuntive (AND tra più condizioni simultanee) in modo incrementale, "
+         "potando ogni regola per ridurre l'errore. Il classificatore scorre le regole in ordine: "
+         "la prima che si attiva predice Decesso; se nessuna si attiva, la predizione è "
+         "Sopravvissuto (DEFAULT). A differenza di GRL, può combinare più feature per regola."),
     ])
     pdf.savefig(fig)
     plt.close(fig)
@@ -533,11 +532,11 @@ def _page_metrics(pdf: PdfPages) -> None:
     fig = _new_fig()
     _add_header(fig, "3.1 · Risultati", "Metriche Comparative")
 
-    ax_tbl = fig.add_axes((0.04, 0.57, 0.92, 0.30))
+    ax_tbl = fig.add_axes((0.04, 0.61, 0.92, 0.26))
     cols = ["Modello", "Type", "Accuracy", "Precision", "Recall", "F1", "ROC-AUC"]
     _render_table(ax_tbl, df[[c for c in cols if c in df.columns]].fillna("—"))
 
-    ax_img = fig.add_axes((0.04, 0.19, 0.92, 0.36))
+    ax_img = fig.add_axes((0.04, 0.27, 0.92, 0.31))
     _embed_image(ax_img, PLOTS_DIR / "metrics_comparison.png")
 
     _add_description(fig,
@@ -547,9 +546,12 @@ def _page_metrics(pdf: PdfPages) -> None:
         "Recall quante morti reali vengono identificate — in clinica un Recall basso (morte non "
         "rilevata) è più pericoloso di una Precision bassa (falso allarme). ROC-AUC è la metrica "
         "più robusta: misura la capacità di separare le classi indipendentemente dalla soglia. "
-        "GreedyRuleList è il miglior rule-based per F1 e Accuracy. SkopeRules ottiene ROC-AUC "
-        "0.858 con Precision=1.0 e Recall=0.263: identifica pochi deceduti ma senza mai sbagliare.",
-        y_start=0.17,
+        "GreedyRuleList e RIPPER ottengono F1=0.667 e Accuracy=0.833 identici — rispettivamente "
+        "con regole a condizione singola e regole multi-condizione AND. Tuttavia RIPPER ha "
+        "ROC-AUC=0.750, il più basso di tutti i modelli: buona classificazione a soglia fissa "
+        "non implica buona capacità discriminativa generale. SkopeRules ottiene Precision=1.0 "
+        "con Recall=0.263: identifica pochi deceduti ma senza mai sbagliare.",
+        y_start=0.25,
     )
     pdf.savefig(fig)
     plt.close(fig)
@@ -561,14 +563,13 @@ def _page_roc(pdf: PdfPages) -> None:
     ax = fig.add_axes((0.04, 0.24, 0.92, 0.65))
     _embed_image(ax, PLOTS_DIR / "roc_curves.png")
     _add_description(fig,
-        "La curva ROC traccia il True Positive Rate (Recall, asse y) contro il False Positive "
-        "Rate (1 - Specificità, asse x) al variare della soglia di classificazione. Un modello "
-        "perfetto punta all'angolo in alto a sinistra (TPR=1, FPR=0); uno casuale segue la "
-        "diagonale tratteggiata (AUC=0.50). L'area sotto la curva (AUC) riassume la performance "
-        "in un unico numero indipendente dalla soglia: valori sopra 0.80 sono considerati buoni "
-        "in ambito clinico. Random Forest raggiunge AUC 0.901, il più alto. SkopeRules e "
+        "La curva ROC traccia il TPR (Recall) contro il FPR al variare della soglia; l'AUC "
+        "riassume la performance in un unico numero indipendente dalla soglia (0.50 = casuale, "
+        "1.0 = perfetto). Random Forest raggiunge AUC 0.901, il più alto. SkopeRules e "
         "GreedyRuleList seguono (~0.89), risultato notevole per modelli intrinsecamente "
-        "interpretabili. FIGS è il più debole (~0.77), penalizzato dalla struttura rigida."
+        "interpretabili. RIPPER ha AUC 0.750 — il più basso di tutti, inferiore anche a "
+        "FIGS (0.767): nonostante F1 e Accuracy identici a GRL, il ranking probabilistico "
+        "è meno calibrato."
     )
     pdf.savefig(fig)
     plt.close(fig)
@@ -586,50 +587,18 @@ def _page_cm(pdf: PdfPages) -> None:
         "un falso negativo (morte non rilevata) è più grave di un falso positivo (falso allarme). "
         "BayesianRuleList massimizza il Recall sui deceduti — pochi falsi negativi — a scapito "
         "di più falsi positivi. Gli ensemble (RandomForest, XGBoost) bilanciano meglio i due "
-        "errori. SkopeRules ha Precision=1.0 ma Recall=0.263: identifica solo 5 deceduti su 19, "
-        "senza mai produrre falsi positivi — comportamento by design delle sue soglie di accettazione."
+        "errori. GreedyRuleList e RIPPER producono matrici identiche (10 TP, 1 FP, 9 FN, 40 TN): "
+        "due architetture molto diverse — regola singola vs AND multi-condizione — convergono "
+        "alla stessa frontiera decisionale. SkopeRules ha Precision=1.0 ma Recall=0.263: "
+        "identifica solo 5 deceduti su 19, senza mai produrre falsi positivi."
     )
-    pdf.savefig(fig)
-    plt.close(fig)
-
-
-def _page_rulefit_rules(pdf: PdfPages) -> None:
-    fig = _new_fig()
-    _add_header(fig, "3.4 · Risultati", "Interpretabilità — Regole RuleFit")
-    ax = fig.add_axes((0.04, 0.24, 0.92, 0.65))
-    _embed_image(ax, PLOTS_DIR / "rulefit_rules.png")
-    _add_description(fig,
-        "RuleFit assegna a ogni regola estratta un coefficiente tramite regressione Lasso: "
-        "coefficiente positivo (barre rosse, grafico superiore) significa che quella condizione "
-        "aumenta la probabilità di decesso; negativo (blu, inferiore) la diminuisce. Le regole "
-        "più influenti nel predire il decesso coinvolgono time basso e serum_creatinine alta, "
-        "confermando i pattern dell'EDA. Le regole pro-sopravvivenza implicano ejection_fraction "
-        "più alta e follow-up lungo. La penalizzazione Lasso azzera i coefficienti delle regole "
-        "ridondanti, mantenendo solo quelle con effetto reale sulla predizione.")
-    pdf.savefig(fig)
-    plt.close(fig)
-
-
-def _page_feature_importance(pdf: PdfPages) -> None:
-    fig = _new_fig()
-    _add_header(fig, "3.6 · Risultati", "Interpretabilità — Feature Importance RF")
-    ax = fig.add_axes((0.04, 0.24, 0.92, 0.65))
-    _embed_image(ax, PLOTS_DIR / "feature_importance_rf.png")
-    _add_description(fig,
-        "L'importanza MDI (Mean Decrease in Impurity) misura di quanto ogni feature riduce "
-        "l'impurità media nei nodi degli alberi del Random Forest: valori più alti indicano "
-        "feature più utilizzate e discriminative. time domina nettamente, seguita da "
-        "serum_creatinine ed ejection_fraction — le stesse tre variabili che emergono dalle "
-        "regole di RuleFit e GreedyRuleList: una validazione incrociata tra approcci molto "
-        "diversi. Le feature binarie (anaemia, diabetes, sex, smoking) hanno importanza "
-        "marginale, coerente con le basse correlazioni dell'EDA.")
     pdf.savefig(fig)
     plt.close(fig)
 
 
 def _page_crossval(pdf: PdfPages) -> None:
     fig = _new_fig()
-    _add_header(fig, "3.7 · Risultati", "Cross-Validation 10-fold")
+    _add_header(fig, "3.5 · Risultati", "Cross-Validation 10-fold")
     ax = fig.add_axes((0.04, 0.24, 0.92, 0.65))
     _embed_image(ax, PLOTS_DIR / "cross_validation.png")
     _add_description(fig,
@@ -647,52 +616,231 @@ def _page_crossval(pdf: PdfPages) -> None:
 def _page_rules_complete(pdf: PdfPages) -> None:
     grl_path = RESULTS_DIR / "grl_rules.json"
     brl_path = RESULTS_DIR / "brl_rules.json"
+    rip_path = RESULTS_DIR / "ripper_rules.json"
     if not grl_path.exists() or not brl_path.exists():
         return
     with open(grl_path) as f:
         grl_rows = json.load(f)
     with open(brl_path) as f:
         brl_rows = json.load(f)
+    rip_rows = json.load(open(rip_path)) if rip_path.exists() else []
 
     fig = _new_fig()
-    _add_header(fig, "3.5 · Risultati", "Regole Complete: GreedyRuleList e BayesianRuleList")
+    _add_header(fig, "3.4 · Risultati", "Regole Complete: GRL, BRL e RIPPER")
 
-    # ── intro ─────────────────────────────────────────────────────────────────
+    row_h = 0.022   # compact row height to fit three tables on one page
+
+    # ── GRL ──────────────────────────────────────────────────────────────────
     y = _write_paragraphs(fig, [
         ("GreedyRuleList",
-         "Lista ordinata di regole IF/THEN applicate in sequenza: il primo paziente che "
-         "soddisfa una condizione viene classificato immediatamente. P(decesso) indica la "
-         "probabilità stimata di decesso per i campioni che soddisfano la regola; "
-         "Campioni indica quanti pazienti del training set vengono classificati da quella regola."),
+         "Lista IF/THEN sequenziale: la prima regola soddisfatta determina la classe, "
+         "che non è necessariamente Decesso — ogni regola predice la classe di maggioranza "
+         "del proprio segmento. % deceduti > 50% → Predizione = Decesso; altrimenti Sopravvissuto."),
     ], start_y=0.88)
+    grl_h = row_h * (len(grl_rows) + 1)
+    ax_grl = fig.add_axes((L_MARGIN, y - 0.01 - grl_h, 1 - 2 * L_MARGIN, grl_h))
+    df_grl = pd.DataFrame(grl_rows, columns=["Condizione", "% deceduti", "Predizione", "Campioni"])
+    _render_table(ax_grl, df_grl, col_widths=[0.47, 0.15, 0.21, 0.17])
 
-    # ── GRL table ─────────────────────────────────────────────────────────────
-    grl_h = 0.026 * (len(grl_rows) + 1)
-    grl_top = y - 0.01
-    ax_grl = fig.add_axes((L_MARGIN, grl_top - grl_h, 1 - 2 * L_MARGIN, grl_h))
-    df_grl = pd.DataFrame(grl_rows, columns=["Condizione", "P(decesso)", "Campioni"])
-    _render_table(ax_grl, df_grl, col_widths=[0.64, 0.18, 0.18])
-
-    # ── BRL section ───────────────────────────────────────────────────────────
-    brl_start = grl_top - grl_h - 0.01
+    # ── BRL ──────────────────────────────────────────────────────────────────
     y2 = _write_paragraphs(fig, [
         ("BayesianRuleList",
-         "Lista IF/ELSE appresa tramite inferenza bayesiana (MCMC) su feature discretizzate "
-         "in bin. Ogni condizione 'feature ∈ (a, b]' indica che la feature cade in quell'intervallo. "
-         "P(decesso) è la probabilità posteriore con intervallo di credibilità al 95%."),
-    ], start_y=brl_start)
-
-    # ── BRL table ─────────────────────────────────────────────────────────────
-    brl_h = 0.026 * (len(brl_rows) + 1)
-    brl_top = y2 - 0.01
-    ax_brl = fig.add_axes((L_MARGIN, brl_top - brl_h, 1 - 2 * L_MARGIN, brl_h))
+         "Lista IF/ELSE con MCMC su feature discretizzate (4 bin, quantile). "
+         "Ogni antecedente può avere fino a 3 condizioni congiuntive. "
+         "P(decesso) = probabilità posteriore con IC al 95%."),
+    ], start_y=y - 0.01 - grl_h - 0.01)
+    brl_h = row_h * (len(brl_rows) + 1)
+    ax_brl = fig.add_axes((L_MARGIN, y2 - 0.01 - brl_h, 1 - 2 * L_MARGIN, brl_h))
     df_brl = pd.DataFrame(brl_rows, columns=["Condizione", "P(decesso)", "IC 95%"])
     _render_table(ax_brl, df_brl, col_widths=[0.58, 0.20, 0.22])
+
+    # ── RIPPER ───────────────────────────────────────────────────────────────
+    if rip_rows:
+        y3 = _write_paragraphs(fig, [
+            ("RIPPER",
+             "Ogni regola ha un antecedente con più condizioni AND (tutte devono essere "
+             "verificate simultaneamente). Se tutte le condizioni di una regola sono "
+             "soddisfatte → Decesso; nessuna regola soddisfatta → Sopravvissuto (DEFAULT)."),
+        ], start_y=y2 - 0.01 - brl_h - 0.01)
+        rip_h = row_h * (len(rip_rows) + 1)
+        ax_rip = fig.add_axes((L_MARGIN, y3 - 0.01 - rip_h, 1 - 2 * L_MARGIN, rip_h))
+        rip_data = [
+            [r[0], "Sopravvissuto" if r[0] == "DEFAULT" else "Decesso", r[1]]
+            for r in rip_rows
+        ]
+        df_rip = pd.DataFrame(rip_data, columns=["Regola", "Predizione", "Campioni"])
+        _render_table(ax_rip, df_rip, col_widths=[0.60, 0.22, 0.18])
 
     pdf.savefig(fig)
     plt.close(fig)
 
 
+def _page_rules_complete2(pdf: PdfPages) -> None:
+    """Continuation of 3.5: RuleFit top rules, SkopeRules, FIGS."""
+    rf_path    = RESULTS_DIR / "rulefit_top_rules.json"
+    skope_path = RESULTS_DIR / "skope_rules.json"
+    figs_path  = RESULTS_DIR / "figs_structure.txt"
+    if not rf_path.exists():
+        return
+
+    with open(rf_path) as f:
+        rf_rows = json.load(f)
+    skope_rows = json.load(open(skope_path)) if skope_path.exists() else []
+    figs_text  = figs_path.read_text() if figs_path.exists() else ""
+
+    fig = _new_fig()
+    _add_header(fig, "3.4 · Risultati (continua)", "Regole Complete: RuleFit, SkopeRules e FIGS")
+
+    row_h = 0.022
+
+    # ── RuleFit ───────────────────────────────────────────────────────────────
+    y = _write_paragraphs(fig, [
+        ("RuleFit — regole con coefficiente positivo (pro Decesso)",
+         "Ogni regola è un percorso estratto da un ensemble di alberi; il coefficiente Lasso "
+         "indica il peso nella predizione finale. Valori più alti → maggiore contributo al "
+         "rischio di decesso. Le regole possono combinare più feature (AND implicito sul percorso)."),
+    ], start_y=0.88)
+    rf_h = row_h * (len(rf_rows) + 1)
+    ax_rf = fig.add_axes((L_MARGIN, y - 0.01 - rf_h, 1 - 2 * L_MARGIN, rf_h))
+    df_rf = pd.DataFrame(rf_rows, columns=["Regola", "Coefficiente"])
+    _render_table(ax_rf, df_rf, col_widths=[0.82, 0.18])
+
+    # ── SkopeRules ────────────────────────────────────────────────────────────
+    y2 = _write_paragraphs(fig, [
+        ("SkopeRules",
+         "Regole ad alta precisione estratte tramite sub-campionamenti di ensemble di alberi, "
+         "poi de-duplicate. Ogni regola è corredata da Precisione e Recall sul training set."),
+    ], start_y=y - 0.01 - rf_h - 0.012)
+    if skope_rows:
+        sk_h = row_h * (len(skope_rows) + 1)
+        ax_sk = fig.add_axes((L_MARGIN, y2 - 0.01 - sk_h, 1 - 2 * L_MARGIN, sk_h))
+        df_sk = pd.DataFrame(skope_rows, columns=["Regola", "Precisione", "Recall"])
+        _render_table(ax_sk, df_sk, col_widths=[0.64, 0.18, 0.18])
+        y2 = y2 - 0.01 - sk_h
+    else:
+        fig.text(L_MARGIN, y2 - 0.01, "Nessuna regola appresa con le soglie impostate.",
+                 fontsize=9, color="#888888", va="top")
+        y2 -= 0.04
+
+    # ── FIGS ──────────────────────────────────────────────────────────────────
+    y_figs = _write_paragraphs(fig, [
+        ("FIGS — Fast Interpretable Greedy-Tree Sums",
+         "FIGS è una somma di alberi: ogni albero assegna al campione un valore numerico "
+         "(la sua contribuzione), e se la somma supera 0.5 la predizione è Decesso. Sono "
+         "stati appresi due alberi: Tree 0 usa time (≤ 60.5 → 0.68) e serum_creatinine, "
+         "Tree 1 usa ejection_fraction (≤ 27.5 → +0.31)."),
+    ], start_y=y2 - 0.012)
+    if figs_text:
+        for i, line in enumerate(figs_text.splitlines()[:12]):
+            fig.text(L_MARGIN + 0.02, y_figs - i * 0.012, line,
+                     fontsize=7.5, color="#444444", va="top",
+                     fontfamily="monospace")
+
+    pdf.savefig(fig)
+    plt.close(fig)
+
+
+def _page_rulefit_interp(pdf: PdfPages) -> None:
+    """Section 3.7: RuleFit coefficient bar chart."""
+    fig = _new_fig()
+    _add_header(fig, "3.7 · Risultati", "Interpretabilità — Regole RuleFit")
+    ax = fig.add_axes((0.04, 0.24, 0.92, 0.65))
+    _embed_image(ax, PLOTS_DIR / "rulefit_rules.png")
+    _add_description(fig,
+        "Coefficienti Lasso delle regole estratte da RuleFit: positivo (barre rosse) → la regola "
+        "aumenta il rischio di decesso; negativo (blu) → lo riduce. Le regole pro-decesso con "
+        "peso più alto coinvolgono time basso e serum_creatinine alta. Le regole pro-sopravvivenza "
+        "implicano ejection_fraction più alta e follow-up lungo. La penalizzazione Lasso azzera "
+        "i coefficienti ridondanti, mantenendo solo le regole con effetto reale sulla predizione."
+    )
+    pdf.savefig(fig)
+    plt.close(fig)
+
+
+def _page_interpretability(pdf: PdfPages) -> None:
+    """Section 3.8: RF feature importance with cross-model interpretability synthesis."""
+    fig = _new_fig()
+    _add_header(fig, "3.7 · Risultati (continua)", "Interpretabilità — Feature Importance RF")
+
+    ax = fig.add_axes((0.04, 0.24, 0.92, 0.65))
+    _embed_image(ax, PLOTS_DIR / "feature_importance_rf.png")
+
+    _add_description(fig,
+        "L'importanza MDI misura di quanto ogni feature riduce l'impurità media nei 200 alberi "
+        "del Random Forest: time domina nettamente, seguita da serum_creatinine ed "
+        "ejection_fraction. Questa gerarchia è confermata in modo indipendente da RuleFit "
+        "(sezione 3.4): le regole con coefficiente Lasso più alto coinvolgono time ≤ 60.5 e "
+        "serum_creatinine alta, quelle con coefficiente negativo implicano follow-up lungo ed "
+        "ejection_fraction alta. Due metodi radicalmente diversi — importance da ensemble di "
+        "200 alberi vs regressione Lasso su regole estratte — convergono sugli stessi tre "
+        "segnali fisiopatologici, coerenti con la letteratura sull'insufficienza cardiaca."
+    )
+
+    pdf.savefig(fig)
+    plt.close(fig)
+
+
+def _page_ablation(pdf: PdfPages) -> None:
+    abl_path     = RESULTS_DIR / "ablation_no_time.csv"
+    grl_nt_path  = RESULTS_DIR / "grl_no_time_rules.json"
+    if not abl_path.exists() or not grl_nt_path.exists():
+        return
+
+    df_abl = pd.read_csv(abl_path, index_col=0)
+    with open(grl_nt_path) as f:
+        grl_nt_rows = json.load(f)
+
+    fig = _new_fig()
+    _add_header(fig, "3.6 · Risultati", "RF e GRL senza feature time")
+
+    y = _write_paragraphs(fig, [
+        ("Motivazione",
+         "La feature time (durata del follow-up) è la più predittiva del dataset, come mostrano "
+         "la feature importance del Random Forest e le regole di GreedyRuleList. In contesti "
+         "reali di triage questa informazione non è sempre disponibile al momento della "
+         "prima valutazione. Questo esperimento valuta RF e GRL privandoli di time, forzandoli "
+         "a imparare dai segnali biochimici e demografici rimanenti (serum_creatinine, "
+         "ejection_fraction, age, ecc.)."),
+    ], start_y=0.88)
+
+    # ── Comparison table ──────────────────────────────────────────────────────
+    labels = {
+        "RandomForest":  "RF (con time)",
+        "RF_no_time":    "RF (senza time)",
+        "GreedyRuleList":"GRL (con time)",
+        "GRL_no_time":   "GRL (senza time)",
+    }
+    rows = []
+    for name in ["RandomForest", "RF_no_time", "GreedyRuleList", "GRL_no_time"]:
+        if name in df_abl.index:
+            r = df_abl.loc[name]
+            rows.append([labels[name],
+                         f"{r['Accuracy']:.4f}", f"{r['F1']:.4f}", f"{r['ROC-AUC']:.4f}"])
+
+    tbl_h = 0.026 * (len(rows) + 1)
+    y_tbl = y - 0.01
+    ax_tbl = fig.add_axes((L_MARGIN, y_tbl - tbl_h, 1 - 2 * L_MARGIN, tbl_h))
+    df_cmp = pd.DataFrame(rows, columns=["Modello", "Accuracy", "F1", "ROC-AUC"])
+    _render_table(ax_tbl, df_cmp, col_widths=[0.40, 0.20, 0.20, 0.20])
+
+    # ── GRL no-time rules ─────────────────────────────────────────────────────
+    grl_sec_y = y_tbl - tbl_h - 0.01
+    y2 = _write_paragraphs(fig, [
+        ("Regole GRL senza time",
+         "Con la rimozione di time, GreedyRuleList impara a discriminare dai segnali "
+         "biochimici. serum_creatinine ed ejection_fraction diventano le feature dominanti, "
+         "coerentemente con la feature importance del Random Forest. Ogni regola classifica "
+         "i campioni in base alla Predizione indicata (Decesso se % deceduti > 50%)."),
+    ], start_y=grl_sec_y)
+
+    grl_h = 0.026 * (len(grl_nt_rows) + 1)
+    top_grl = y2 - 0.01
+    ax_grl = fig.add_axes((L_MARGIN, top_grl - grl_h, 1 - 2 * L_MARGIN, grl_h))
+    df_grl = pd.DataFrame(grl_nt_rows, columns=["Condizione", "% deceduti", "Predizione", "Campioni"])
+    _render_table(ax_grl, df_grl, col_widths=[0.47, 0.15, 0.21, 0.17])
+
+    pdf.savefig(fig)
+    plt.close(fig)
 
 
 def _page_conclusions(pdf: PdfPages) -> None:
@@ -714,7 +862,11 @@ def _page_conclusions(pdf: PdfPages) -> None:
          "i decessi, il che in medicina è spesso preferibile a sottostimarli. FIGS ha AUC più "
          "basso (0.767) ma struttura additiva particolarmente trasparente. SkopeRules raggiunge "
          "Precision=1.0 con Recall=0.263: non produce mai falsi positivi, ma identifica solo "
-         "5 deceduti su 19 — utile quando ogni allarme deve corrispondere a un caso realmente critico."),
+         "5 deceduti su 19 — utile quando ogni allarme deve corrispondere a un caso critico. "
+         "RIPPER è l'unico rule-list a produrre regole congiuntive (AND tra più condizioni): "
+         "ottiene F1=0.667 identico a GRL, ma con ROC-AUC=0.750 — il più basso di tutti. "
+         "Il vantaggio strutturale (regole multi-feature) non si traduce in migliore capacità "
+         "discriminativa su questo dataset."),
         ("Precision vs Recall in ambito clinico",
          "Il trade-off tra precisione e recall non è neutro in contesti medici. Alta recall "
          "minimizza i falsi negativi (morti non rilevate), che in clinica sono più pericolosi "
@@ -765,6 +917,12 @@ def _page_conclusions(pdf: PdfPages) -> None:
          "competitivo con gli ensemble. GreedyRuleList ottiene 0.843 ± 0.096, con varianza "
          "più alta ma attesa su fold di circa 24 campioni. FIGS ha la varianza maggiore "
          "(0.847 ± 0.110), indice di instabilità strutturale su dataset piccoli."),
+        ("Ablazione della feature time",
+         "Rimuovendo time da RF e GRL, il ROC-AUC scende da 0.901 a 0.802 per RF e da 0.885 "
+         "a 0.772 per GRL: un costo di circa 0.10, atteso dato il peso dominante di time. "
+         "Senza time i modelli si affidano a serum_creatinine ed ejection_fraction — feature "
+         "biochimiche disponibili alla prima valutazione, prima del follow-up — e rimangono "
+         "utilizzabili in contesti di triage, anche se con discriminazione ridotta."),
         ("Limiti e sviluppi futuri",
          "Con 60 campioni nel test set (19 deceduti) ogni metrica è soggetta ad alta varianza: "
          "un solo paziente classificato diversamente sposta F1 di oltre 0.05. I risultati sono "
@@ -814,9 +972,11 @@ def _postprocess_pdf(path) -> None:
         ("2.4", 10, False), ("2.5", 11, False),
         ("3.",  12, True),
         ("3.1", 12, False), ("3.2", 13, False), ("3.3", 14, False),
-        ("3.4", 15, False), ("3.5", 16, False), ("3.6", 17, False), ("3.7", 18, False),
-        ("4.",  19, True),
-        ("4.1", 19, False),
+        ("3.4", 15, False),
+        ("3.5", 17, False), ("3.6", 18, False),
+        ("3.7", 19, False),
+        ("4.",  21, True),
+        ("4.1", 21, False),
     ]
 
     toc_page = doc[0]
@@ -831,15 +991,14 @@ def _postprocess_pdf(path) -> None:
         top_pdf = (1.0 - y) * ph
         left_pdf = L_MARGIN * pw
         right_pdf = (1.0 - L_MARGIN) * pw
-        link_rect = fitz.Rect(left_pdf, top_pdf - 2, right_pdf, top_pdf + 14)
+        link_rect = fitz.Rect(left_pdf, top_pdf - 5, right_pdf, top_pdf + 12)
         toc_page.insert_link({
             "kind": fitz.LINK_GOTO,
             "from": link_rect,
             "page": page_num - 1,  # fitz uses 0-based page indices
-            "to": fitz.Point(0, 0),
         })
 
-        y -= 0.034 if is_chapter else 0.027  # post-spacing
+        y -= 0.032 if is_chapter else 0.025  # post-spacing
 
     tmp = str(path) + ".tmp"
     doc.save(tmp)
@@ -866,10 +1025,12 @@ def generate_report() -> None:
         _page_metrics(pdf)
         _page_roc(pdf)
         _page_cm(pdf)
-        _page_rulefit_rules(pdf)
         _page_rules_complete(pdf)
-        _page_feature_importance(pdf)
+        _page_rules_complete2(pdf)
         _page_crossval(pdf)
+        _page_ablation(pdf)
+        _page_rulefit_interp(pdf)
+        _page_interpretability(pdf)
         _page_conclusions(pdf)
 
         pdf.infodict().update({

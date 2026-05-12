@@ -21,7 +21,7 @@ PLOTS_DIR.mkdir(exist_ok=True)
 plt.rcParams["figure.dpi"] = 150
 sns.set_theme(style="whitegrid", palette="muted")
 
-RULE_BASED_NAMES = {"RuleFit", "GreedyRuleList", "BayesianRuleList", "FIGS", "SkopeRules"}
+RULE_BASED_NAMES = {"RuleFit", "GreedyRuleList", "BayesianRuleList", "FIGS", "SkopeRules", "RIPPER"}
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────

@@ -1,6 +1,9 @@
 """Factory functions for all classifiers: rule-based and ensemble."""
 
+import pandas as pd
+import numpy as np
 import xgboost as xgb
+from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from imodels import (
     RuleFitClassifier,
@@ -17,6 +20,7 @@ from config import (
     BRL_MAX_ITER, BRL_MAX_CARDINALITY,
     FIGS_MAX_RULES,
     SKOPE_N_ESTIMATORS, SKOPE_PRECISION_MIN, SKOPE_RECALL_MIN,
+    RIPPER_K,
     RF_N_ESTIMATORS,
     GB_N_ESTIMATORS, GB_LEARNING_RATE, GB_MAX_DEPTH,
     XGB_N_ESTIMATORS, XGB_LEARNING_RATE, XGB_MAX_DEPTH,
@@ -45,6 +49,42 @@ def build_bayesian_rule_list() -> BayesianRuleListClassifier:
 
 def build_figs() -> FIGSClassifier:
     return FIGSClassifier(max_rules=FIGS_MAX_RULES)
+
+
+class _RIPPERWrapper(BaseEstimator, ClassifierMixin):
+    """sklearn-compatible wrapper: fixes pos_class=1 and handles DataFrame/ndarray.
+    RIPPER object is created inside fit() so sklearn clone() works correctly."""
+
+    def __init__(self, k: int = 2, random_state: int | None = None) -> None:
+        self.k = k
+        self.random_state = random_state
+
+    def _as_df(self, X) -> pd.DataFrame:
+        if isinstance(X, pd.DataFrame):
+            return X
+        return pd.DataFrame(X, columns=getattr(self, "_feature_names_", None))
+
+    def fit(self, X, y):
+        import wittgenstein as lw
+        if isinstance(X, pd.DataFrame):
+            self._feature_names_ = list(X.columns)
+        self._ripper_ = lw.RIPPER(k=self.k, random_state=self.random_state)
+        self._ripper_.fit(self._as_df(X), y, pos_class=1)
+        return self
+
+    def predict(self, X) -> np.ndarray:
+        return np.asarray(self._ripper_.predict(self._as_df(X))).astype(int)
+
+    def predict_proba(self, X) -> np.ndarray:
+        return self._ripper_.predict_proba(self._as_df(X))
+
+    @property
+    def ruleset_(self):
+        return self._ripper_.ruleset_
+
+
+def build_ripper() -> _RIPPERWrapper:
+    return _RIPPERWrapper(k=RIPPER_K, random_state=RANDOM_STATE)
 
 
 def build_skope_rules() -> SkopeRulesClassifier:
