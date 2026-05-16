@@ -10,7 +10,7 @@ from ucimlrepo import fetch_ucirepo
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, KBinsDiscretizer
 
-from config import DATA_DIR, RANDOM_STATE, TEST_SIZE
+from config import DATA_DIR, RANDOM_STATE, TEST_SIZE, VAL_SIZE
 
 # macOS Python (python.org installer) ships without system CA certificates.
 # Point the SSL stack to certifi's bundle before any HTTPS call is made.
@@ -22,13 +22,19 @@ ssl._create_default_https_context = lambda: ssl.create_default_context(cafile=ce
 @dataclass
 class PreparedData:
     X_train: pd.DataFrame
+    X_val: pd.DataFrame
     X_test: pd.DataFrame
     y_train: np.ndarray
+    y_val: np.ndarray
     y_test: np.ndarray
     X_train_scaled: pd.DataFrame    # StandardScaled (for RuleFit)
+    X_val_scaled: pd.DataFrame
     X_test_scaled: pd.DataFrame
     X_train_disc: np.ndarray        # one-hot binary bins (for BayesianRuleList)
+    X_val_disc: np.ndarray
     X_test_disc: np.ndarray
+    X_trainval: pd.DataFrame        # train+val combined (used for cross-validation)
+    y_trainval: np.ndarray
     feature_names: list[str]
     disc_feature_names: list[str]   # decoded names for each discretised column
     scale_pos_weight: float         # class imbalance weight for XGBoost
@@ -61,16 +67,27 @@ def load_dataset() -> tuple[pd.DataFrame, pd.Series]:
 
 
 def prepare(X: pd.DataFrame, y: pd.Series) -> PreparedData:
-    """Stratified split + scaling + one-hot discretisation."""
-    X_train, X_test, y_train, y_test = train_test_split(
+    """Stratified 60/20/20 train/val/test split + scaling + one-hot discretisation."""
+    # Step 1: hold out test set (20 %)
+    X_trainval, X_test, y_trainval, y_test = train_test_split(
         X, y,
         test_size=TEST_SIZE,
         random_state=RANDOM_STATE,
         stratify=y,
     )
+    # Step 2: split trainval into train (75 % of trainval ≈ 60 % total)
+    #         and val (25 % of trainval ≈ 20 % total)
+    val_frac = VAL_SIZE / (1.0 - TEST_SIZE)
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_trainval, y_trainval,
+        test_size=val_frac,
+        random_state=RANDOM_STATE,
+        stratify=y_trainval,
+    )
 
     scaler = StandardScaler()
     X_train_scaled = pd.DataFrame(scaler.fit_transform(X_train), columns=X.columns)
+    X_val_scaled   = pd.DataFrame(scaler.transform(X_val),       columns=X.columns)
     X_test_scaled  = pd.DataFrame(scaler.transform(X_test),      columns=X.columns)
 
     # BayesianRuleList requires strictly binary (0/1) features.
@@ -78,6 +95,7 @@ def prepare(X: pd.DataFrame, y: pd.Series) -> PreparedData:
     # Actual column count depends on the data (typically ~33, not 48).
     discretiser = KBinsDiscretizer(n_bins=4, encode="onehot-dense", strategy="quantile")
     X_train_disc = np.asarray(discretiser.fit_transform(X_train.values)).astype(int)
+    X_val_disc   = np.asarray(discretiser.transform(X_val.values)).astype(int)
     X_test_disc  = np.asarray(discretiser.transform(X_test.values)).astype(int)
 
     disc_feature_names: list[str] = []
@@ -88,19 +106,26 @@ def prepare(X: pd.DataFrame, y: pd.Series) -> PreparedData:
 
     scale_pos_weight = float((y_train == 0).sum() / (y_train == 1).sum())
 
-    print(f"Train: {len(X_train)} samples  |  Test: {len(X_test)} samples")
+    print(f"Train: {len(X_train)} | Val: {len(X_val)} | Test: {len(X_test)} samples")
     print(f"Train positive rate: {y_train.mean():.1%}")
+    print(f"Val   positive rate: {y_val.mean():.1%}")
     print(f"Test  positive rate: {y_test.mean():.1%}\n")
 
     return PreparedData(
         X_train=X_train.reset_index(drop=True),
+        X_val=X_val.reset_index(drop=True),
         X_test=X_test.reset_index(drop=True),
         y_train=y_train.values,
+        y_val=y_val.values,
         y_test=y_test.values,
         X_train_scaled=X_train_scaled,
+        X_val_scaled=X_val_scaled,
         X_test_scaled=X_test_scaled,
         X_train_disc=X_train_disc,
+        X_val_disc=X_val_disc,
         X_test_disc=X_test_disc,
+        X_trainval=X_trainval.reset_index(drop=True),
+        y_trainval=y_trainval.values,
         feature_names=list(X.columns),
         disc_feature_names=disc_feature_names,
         scale_pos_weight=scale_pos_weight,

@@ -14,9 +14,10 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 
-from config import RANDOM_STATE, CV_FOLDS, RESULTS_DIR, PLOTS_DIR
+from config import RANDOM_STATE, CV_FOLDS, RESULTS_DIR, FILES_DIR, PLOTS_DIR
 
 RESULTS_DIR.mkdir(exist_ok=True)
+FILES_DIR.mkdir(exist_ok=True)
 PLOTS_DIR.mkdir(exist_ok=True)
 plt.rcParams["figure.dpi"] = 150
 sns.set_theme(style="whitegrid", palette="muted")
@@ -65,7 +66,7 @@ def summary_table(results: list[dict]) -> pd.DataFrame:
     ]).set_index("name")
     df["Type"] = df.index.map(lambda n: "Rule-based" if n in RULE_BASED_NAMES else "Ensemble")
     df = df.sort_values("ROC-AUC", ascending=False)
-    df.to_csv(RESULTS_DIR / "metrics_summary.csv")
+    df.to_csv(FILES_DIR / "metrics_summary.csv")
     print("\n=== Metrics Summary ===")
     print(df.to_string())
     return df
@@ -286,3 +287,92 @@ def run_cross_validation(cv_entries: list[dict], y_train: np.ndarray) -> None:
     plt.savefig(PLOTS_DIR / "cross_validation.png")
     plt.close()
     print("Saved: results/cross_validation.png")
+
+
+def plot_hyperparam_analysis(all_scores: dict[str, list[tuple[dict, float]]]) -> None:
+    """Two figures: rule-based models and ensemble models.
+
+    all_scores maps model_name → [(params_dict, val_roc_auc), ...]
+    For multi-parameter grids the marginal best is shown: for each value of a
+    parameter, take the maximum val AUC across all combinations that include it.
+    """
+    def _marginal(scores, param):
+        """Return {param_value: max_val_auc} marginalising over other params."""
+        best = {}
+        for params, score in scores:
+            v = params.get(param)
+            if v is None:
+                continue
+            v_key = str(v)
+            if v_key not in best or score > best[v_key]:
+                best[v_key] = score
+        return best
+
+    def _barplot(ax, scores, param, title, best_params, color):
+        marg = _marginal(scores, param)
+        if not marg:
+            ax.set_visible(False)
+            return
+        keys = list(marg.keys())
+        vals = [marg[k] for k in keys]
+        best_val = str(best_params.get(param, ""))
+        bar_colors = [color if k == best_val else "#cccccc" for k in keys]
+        ax.bar(keys, vals, color=bar_colors, edgecolor="white", linewidth=0.8)
+        ax.set_ylim(max(0, min(vals) - 0.05), min(1.0, max(vals) + 0.06))
+        ax.set_title(title, fontsize=9, fontweight="bold")
+        ax.set_xlabel(param, fontsize=8)
+        ax.set_ylabel("Val ROC-AUC", fontsize=8)
+        ax.tick_params(labelsize=8)
+        for bar, v in zip(ax.patches, vals):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.005,
+                    f"{v:.3f}", ha="center", va="bottom", fontsize=7)
+
+    # ── Figure 1: rule-based ──────────────────────────────────────────────────
+    rb_layout = [
+        ("GreedyRuleList",   "max_depth",      "#4C72B0"),
+        ("BayesianRuleList", "maxcardinality",  "#4C72B0"),
+        ("SkopeRules",       "max_depth",       "#4C72B0"),
+        ("SkopeRules",       "precision_min",   "#4C72B0"),
+        ("SkopeRules",       "recall_min",      "#4C72B0"),
+    ]
+
+    # Load best params for highlight (passed as part of all_scores metadata? no — derive)
+    best_map = {name: dict(max(scores, key=lambda x: x[1])[0])
+                for name, scores in all_scores.items() if scores}
+
+    fig, axes = plt.subplots(2, 3, figsize=(12, 7))
+    axes = axes.flatten()
+    for idx, (model, param, color) in enumerate(rb_layout):
+        scores = all_scores.get(model, [])
+        _barplot(axes[idx], scores, param, f"{model}\n{param}", best_map.get(model, {}), color)
+    axes[5].set_visible(False)
+    plt.suptitle("Analisi iperparametri — Modelli Rule-Based\n(barre evidenziate = valore ottimale)",
+                 fontweight="bold", fontsize=11)
+    plt.tight_layout()
+    plt.savefig(PLOTS_DIR / "hyperparam_rule_based.png")
+    plt.close()
+    print("Saved: results/hyperparam_rule_based.png")
+
+    # ── Figure 2: ensemble ────────────────────────────────────────────────────
+    ens_layout = [
+        ("RandomForest",     "n_estimators",    "#DD8452"),
+        ("RandomForest",     "max_depth",       "#DD8452"),
+        ("RandomForest",     "min_samples_leaf","#DD8452"),
+        ("GradientBoosting", "n_estimators",    "#DD8452"),
+        ("GradientBoosting", "learning_rate",   "#DD8452"),
+        ("GradientBoosting", "max_depth",       "#DD8452"),
+        ("XGBoost",          "n_estimators",    "#DD8452"),
+        ("XGBoost",          "learning_rate",   "#DD8452"),
+        ("XGBoost",          "max_depth",       "#DD8452"),
+    ]
+    fig, axes = plt.subplots(3, 3, figsize=(12, 10))
+    axes = axes.flatten()
+    for idx, (model, param, color) in enumerate(ens_layout):
+        scores = all_scores.get(model, [])
+        _barplot(axes[idx], scores, param, f"{model}\n{param}", best_map.get(model, {}), color)
+    plt.suptitle("Analisi iperparametri — Modelli Ensemble\n(barre evidenziate = valore ottimale)",
+                 fontweight="bold", fontsize=11)
+    plt.tight_layout()
+    plt.savefig(PLOTS_DIR / "hyperparam_ensemble.png")
+    plt.close()
+    print("Saved: results/hyperparam_ensemble.png")

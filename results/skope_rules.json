@@ -1,1 +1,0 @@
-[["time <= 73.5 and serum_creatinine > 1.35", "0.900", "0.450"], ["ejection_fraction <= 25.0 and time <= 100.0", "0.818", "0.473"], ["age > 75.0 and serum_creatinine > 1.9", "1.000", "0.263"]]

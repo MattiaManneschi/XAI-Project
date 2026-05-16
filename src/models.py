@@ -29,26 +29,34 @@ from config import (
 
 # ── Rule-based ────────────────────────────────────────────────────────────────
 
-def build_rulefit() -> RuleFitClassifier:
-    return RuleFitClassifier(max_rules=RULEFIT_MAX_RULES, random_state=RANDOM_STATE)
+def build_rulefit(**params) -> RuleFitClassifier:
+    cfg = {"max_rules": RULEFIT_MAX_RULES, "random_state": RANDOM_STATE}
+    cfg.update(params)
+    return RuleFitClassifier(**cfg)
 
 
-def build_greedy_rule_list() -> GreedyRuleListClassifier:
-    return GreedyRuleListClassifier(max_depth=GRL_MAX_DEPTH)
+def build_greedy_rule_list(**params) -> GreedyRuleListClassifier:
+    cfg = {"max_depth": GRL_MAX_DEPTH}
+    cfg.update(params)
+    return GreedyRuleListClassifier(**cfg)
 
 
-def build_bayesian_rule_list() -> BayesianRuleListClassifier:
-    return BayesianRuleListClassifier(
-        max_iter=BRL_MAX_ITER,
-        listlengthprior=3,
-        listwidthprior=1,
-        maxcardinality=BRL_MAX_CARDINALITY,
-        random_state=RANDOM_STATE,
-    )
+def build_bayesian_rule_list(**params) -> BayesianRuleListClassifier:
+    cfg = {
+        "max_iter": BRL_MAX_ITER,
+        "listlengthprior": 3,
+        "listwidthprior": 1,
+        "maxcardinality": BRL_MAX_CARDINALITY,
+        "random_state": RANDOM_STATE,
+    }
+    cfg.update(params)
+    return BayesianRuleListClassifier(**cfg)
 
 
-def build_figs() -> FIGSClassifier:
-    return FIGSClassifier(max_rules=FIGS_MAX_RULES)
+def build_figs(**params) -> FIGSClassifier:
+    cfg = {"max_rules": FIGS_MAX_RULES}
+    cfg.update(params)
+    return FIGSClassifier(**cfg)
 
 
 class _RIPPERWrapper(BaseEstimator, ClassifierMixin):
@@ -87,46 +95,54 @@ def build_ripper() -> _RIPPERWrapper:
     return _RIPPERWrapper(k=RIPPER_K, random_state=RANDOM_STATE)
 
 
-def build_skope_rules() -> SkopeRulesClassifier:
-    return SkopeRulesClassifier(
-        n_estimators=SKOPE_N_ESTIMATORS,
-        precision_min=SKOPE_PRECISION_MIN,
-        recall_min=SKOPE_RECALL_MIN,
-        random_state=RANDOM_STATE,
-    )
+def build_skope_rules(**params) -> SkopeRulesClassifier:
+    cfg = {
+        "n_estimators": SKOPE_N_ESTIMATORS,
+        "precision_min": SKOPE_PRECISION_MIN,
+        "recall_min": SKOPE_RECALL_MIN,
+        "random_state": RANDOM_STATE,
+    }
+    cfg.update(params)
+    return SkopeRulesClassifier(**cfg)
 
 
 # ── Ensemble ──────────────────────────────────────────────────────────────────
 
-def build_random_forest() -> RandomForestClassifier:
-    return RandomForestClassifier(
-        n_estimators=RF_N_ESTIMATORS,
-        min_samples_leaf=2,
-        class_weight="balanced",
-        random_state=RANDOM_STATE,
-        n_jobs=-1,
-    )
+def build_random_forest(**params) -> RandomForestClassifier:
+    cfg = {
+        "n_estimators": RF_N_ESTIMATORS,
+        "min_samples_leaf": 2,
+        "class_weight": "balanced",
+        "random_state": RANDOM_STATE,
+        "n_jobs": -1,
+    }
+    cfg.update(params)
+    return RandomForestClassifier(**cfg)
 
 
-def build_gradient_boosting() -> GradientBoostingClassifier:
-    return GradientBoostingClassifier(
-        n_estimators=GB_N_ESTIMATORS,
-        learning_rate=GB_LEARNING_RATE,
-        max_depth=GB_MAX_DEPTH,
-        subsample=0.8,
-        random_state=RANDOM_STATE,
-    )
+def build_gradient_boosting(**params) -> GradientBoostingClassifier:
+    cfg = {
+        "n_estimators": GB_N_ESTIMATORS,
+        "learning_rate": GB_LEARNING_RATE,
+        "max_depth": GB_MAX_DEPTH,
+        "subsample": 0.8,
+        "random_state": RANDOM_STATE,
+    }
+    cfg.update(params)
+    return GradientBoostingClassifier(**cfg)
 
 
-def build_xgboost(scale_pos_weight: float) -> xgb.XGBClassifier:
-    return xgb.XGBClassifier(
-        n_estimators=XGB_N_ESTIMATORS,
-        learning_rate=XGB_LEARNING_RATE,
-        max_depth=XGB_MAX_DEPTH,
-        subsample=0.8,
-        colsample_bytree=0.8,
-        scale_pos_weight=scale_pos_weight,
-        eval_metric="logloss",
-        verbosity=0,
-        random_state=RANDOM_STATE,
-    )
+def build_xgboost(scale_pos_weight: float, **params) -> xgb.XGBClassifier:
+    cfg = {
+        "n_estimators": XGB_N_ESTIMATORS,
+        "learning_rate": XGB_LEARNING_RATE,
+        "max_depth": XGB_MAX_DEPTH,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "scale_pos_weight": scale_pos_weight,
+        "eval_metric": "logloss",
+        "verbosity": 0,
+        "random_state": RANDOM_STATE,
+    }
+    cfg.update(params)
+    return xgb.XGBClassifier(**cfg)

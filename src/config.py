@@ -1,12 +1,14 @@
 from pathlib import Path
 
 RANDOM_STATE = 42
-TEST_SIZE = 0.2
+TEST_SIZE = 0.2    # fraction held out as test set
+VAL_SIZE  = 0.2    # fraction held out as validation set (for hyperparameter tuning)
 CV_FOLDS = 10
 
 _ROOT = Path(__file__).parent.parent
 DATA_DIR = _ROOT / "data"
 RESULTS_DIR = _ROOT / "results"
+FILES_DIR   = RESULTS_DIR / "files"   # JSON / CSV artefacts
 PLOTS_DIR   = RESULTS_DIR / "plots"
 
 # Rule-based hyperparams

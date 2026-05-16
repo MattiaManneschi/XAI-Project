@@ -1,0 +1,29 @@
+> ------------------------------
+> FIGS-Fast Interpretable Greedy-Tree Sums:
+> 	Predictions are made by summing the "Val" reached by traversing each tree.
+> 	For classifiers, a softmax function is then applied to the sum.
+> ------------------------------
+time <= 73.500 (Tree #0 root)
+	time <= 52.000 (split)
+		Val: 0.077 0.923 (leaf)
+		serum_sodium <= 137.000 (split)
+			Val: 0.163 0.837 (leaf)
+			ejection_fraction <= 30.000 (split)
+				Val: 0.258 0.742 (leaf)
+				Val: 0.926 0.074 (leaf)
+	serum_creatinine <= 1.450 (split)
+		Val: 0.898 0.102 (leaf)
+		creatinine_phosphokinase <= 69.000 (split)
+			Val: 1.059 -0.059 (leaf)
+			time <= 104.000 (split)
+				Val: 0.125 0.875 (leaf)
+				serum_creatinine <= 1.965 (split)
+					Val: 0.492 0.508 (leaf)
+					Val: 1.258 -0.258 (leaf)
+
+	+
+ejection_fraction <= 27.500 (Tree #1 root)
+	time <= 148.000 (split)
+		Val: -0.104 0.104 (leaf)
+		Val: -0.36 0.36 (leaf)
+	Val: 0.074 -0.074 (leaf)

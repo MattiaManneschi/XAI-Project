@@ -1,1 +1,0 @@
-[["time <= 73.5", "0.312"], ["serum_creatinine > 1.45 and time <= 73.5", "0.284"], ["ejection_fraction <= 27.5 and serum_creatinine > 1.1", "0.201"], ["age > 70 and serum_creatinine > 1.6", "0.178"], ["time <= 40.0", "0.155"], ["serum_creatinine > 2.0", "0.143"], ["ejection_fraction <= 20.0 and time <= 100.0", "0.121"], ["platelets <= 100000 and time <= 80.0", "0.098"]]
