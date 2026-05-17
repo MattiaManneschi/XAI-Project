@@ -91,12 +91,11 @@ e spiegazioni fuorvianti.
 
 \textbf{Struttura del report.}
 Il Capitolo~1 introduce il problema clinico, descrive il dataset e presenta l'analisi esplorativa.
-Il Capitolo~2 illustra l'architettura del progetto, la pipeline di elaborazione dei dati, i modelli
-utilizzati e la loro configurazione. Il Capitolo~3 presenta i risultati e il confronto delle
-performance. Il Capitolo~4 raccoglie le conclusioni, l'analisi clinica dei risultati e i limiti
-del lavoro.
+Il Capitolo~2 descrive la metodologia: pipeline di elaborazione dei dati, modelli utilizzati e
+selezione degli iperparametri. Il Capitolo~3 presenta i risultati e il confronto delle
+performance. Il Capitolo~4 raccoglie le conclusioni, l'analisi delle feature e il confronto
+clinico dei risultati.
 
-\clearpage
 \subsection{Il Dataset}
 
 Il dataset \emph{Heart Failure Clinical Records} (UCI, id=519) raccoglie cartelle cliniche di
@@ -142,7 +141,7 @@ smoking & binaria & Fumatore (0/1) \\
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{figures/eda_continuous.png}
+  \includegraphics[width=0.88\textwidth]{figures/eda_continuous.png}
 \end{figure}
 
 Ogni istogramma sovrappone la distribuzione di una feature per sopravvissuti (blu) e deceduti
@@ -165,11 +164,11 @@ lungo tendono a sopravvivere. \texttt{serum\_creatinine} (+0.29) ed
 Le feature binarie mostrano correlazioni deboli ($< \pm 0.15$).
 
 
-\section{Architettura e Implementazione}
+\section{Metodologia}
 
 \subsection{Struttura del Progetto}
 
-Il progetto è organizzato in una cartella \texttt{src/} con sette moduli distinti, ciascuno
+Il progetto è organizzato in una cartella \texttt{src/} con sei moduli distinti, ciascuno
 con una responsabilità precisa. Questa separazione permette di modificare una componente senza
 toccare le altre e rende il codice più leggibile e testabile.
 
@@ -182,10 +181,9 @@ toccare le altre e rende il codice più leggibile e testabile.
 config.py & Centralizza iperparametri, path e costanti \\
 \rowcolor{ltrow}data\textbackslash{}\_loader.py & Download UCI, cache CSV, split stratificato 60/20/20, tre varianti di preprocessing \\
 models.py & Factory function per ciascuno dei 9 modelli; accetta **params per override \\
-\rowcolor{ltrow}evaluate.py & Calcolo metriche, generazione di tutti i grafici, cross-validation \\
-tune.py & Grid search esaustiva sul validation set (ROC-AUC) \\
-\rowcolor{ltrow}main.py & Orchestrazione dell'intera pipeline end-to-end \\
-report\textbackslash{}\_latex.py & Legge gli artefatti salvati e genera il report LaTeX/PDF \\
+\rowcolor{ltrow}evaluate.py & Calcolo metriche, grafici, cross-validation e grid search sul validation set (ROC-AUC) \\
+main.py & Orchestrazione dell'intera pipeline end-to-end \\
+\rowcolor{ltrow}report\textbackslash{}\_latex.py & Legge gli artefatti salvati e genera il report LaTeX/PDF \\
 \bottomrule
 \end{tabular}}}
 \end{center}
@@ -203,7 +201,6 @@ BayesianRuleList, FIGS, SkopeRules). \texttt{wittgenstein} implementa RIPPER.
 \texttt{xgboost} implementa XGBoost. \texttt{ucimlrepo} scarica il dataset direttamente dal
 repository UCI.
 
-\clearpage
 \subsection{Pipeline di Elaborazione dei Dati}
 
 \textbf{Split stratificato 60/20/20.}
@@ -236,7 +233,6 @@ Il dataset contiene 203 sopravvissuti e 96 deceduti ($\sim$32\% positivi).
 Random Forest usa \texttt{class\_weight='balanced'}; XGBoost usa \texttt{scale\_pos\_weight}
 calcolato come rapporto negativi/positivi nel training set.
 
-\clearpage
 \subsection{Modelli Interpretabili Basati su Regole}
 
 I modelli basati su regole producono predizioni if-then direttamente leggibili da un esperto
@@ -257,7 +253,7 @@ della libreria \texttt{imodels}.
 Apprende una lista di regole tramite MCMC su feature binarie. Le variabili continue vengono
 discretizzate in bin prima del fitting; produce stime probabilistiche con IC al 95\%.
 Il parametro \texttt{maxcardinality} controlla il numero massimo di condizioni per regola;
-dal tuning sul validation set è risultato ottimale il valore 1.
+dal tuning sul validation set è risultato ottimale il valore 3.
 
 \textbf{FIGS --- Fast Interpretable Greedy-Tree Sums.}
 Somma di piccoli alberi decisionali, ciascuno appreso greedy sui residui del precedente.
@@ -276,7 +272,6 @@ ogni regola per ridurre l'errore. La prima regola soddisfatta predice Decesso; s
 attiva, la predizione è Sopravvissuto (DEFAULT). A differenza di GRL, può combinare più
 feature in un singolo antecedente.
 
-\clearpage
 \subsection{Modelli Ensemble Non Interpretabili}
 
 I modelli ensemble combinano centinaia di alberi decisionali per ottenere performance
@@ -297,8 +292,7 @@ Implementazione ottimizzata del gradient boosting con regolarizzazione L1/L2, ge
 nativa dei valori mancanti e parallelismo. Usa \texttt{scale\_pos\_weight} per bilanciare
 le classi.
 
-\clearpage
-\subsection{Configurazione e Iperparametri}
+\subsection{Selezione degli Iperparametri}
 
 Il dataset (299 campioni) è suddiviso in tre parti stratificate: train 60\%, validation 20\%,
 test 20\% ($\approx$179/60/60 campioni). Gli iperparametri di GreedyRuleList, BayesianRuleList,
@@ -307,7 +301,7 @@ tramite grid search esaustiva. RuleFit, FIGS e RIPPER usano i parametri di defau
 libreria. La valutazione finale avviene sul test set, mantenuto separato durante tutto il
 processo di selezione.
 
-\medskip
+\begin{minipage}{\textwidth}
 \noindent\textbf{Grid di ricerca --- migliori valori sul validation set}
 \medskip
 
@@ -317,12 +311,16 @@ processo di selezione.
 \cellcolor{tblhdr}\color{white}\bfseries Modello & \cellcolor{tblhdr}\color{white}\bfseries Parametro & \cellcolor{tblhdr}\color{white}\bfseries Valori esplorati & \cellcolor{tblhdr}\color{white}\bfseries Ottimo (val) \\
 \midrule
 GreedyRuleList & max\textbackslash{}\_depth & 1, 2, 3, 4, 6 & 2 \\
-\rowcolor{ltrow}BayesianRuleList & maxcardinality & 1, 2, 3 & 1 \\
+\rowcolor{ltrow}GreedyRuleList & criterion & gini, entropy & gini \\
+GreedyRuleList & class\textbackslash{}\_weight & None, balanced & None \\
+\rowcolor{ltrow}BayesianRuleList & maxcardinality & 2, 3 & 3 \\
+BayesianRuleList & listlengthprior & 2, 3, 4 & 4 \\
+\rowcolor{ltrow}BayesianRuleList & minsupport & 0.05, 0.1, 0.2 & 0.2 \\
 SkopeRules & max\textbackslash{}\_depth & 2, 3, 4 & 2 \\
-\rowcolor{ltrow}SkopeRules & precision\textbackslash{}\_min & 0.4, 0.5 & 0.4 \\
-SkopeRules & recall\textbackslash{}\_min & 0.2, 0.3 & 0.2 \\
+\rowcolor{ltrow}SkopeRules & precision\textbackslash{}\_min & 0.5, 0.6 & 0.6 \\
+SkopeRules & recall\textbackslash{}\_min & 0.3, 0.4 & 0.3 \\
 \rowcolor{ltrow}RandomForest & n\textbackslash{}\_estimators & 100, 200 & 100 \\
-RandomForest & max\textbackslash{}\_depth & None, 5, 10 & --- \\
+RandomForest & max\textbackslash{}\_depth & None, 5, 10 & None \\
 \rowcolor{ltrow}RandomForest & min\textbackslash{}\_samples\textbackslash{}\_leaf & 1, 2, 5 & 5 \\
 GradientBoosting & n\textbackslash{}\_estimators & 100, 200 & 100 \\
 \rowcolor{ltrow}GradientBoosting & learning\textbackslash{}\_rate & 0.05, 0.1 & 0.1 \\
@@ -333,8 +331,10 @@ XGBoost & learning\textbackslash{}\_rate & 0.05, 0.1 & 0.05 \\
 \bottomrule
 \end{tabular}}}
 \end{center}
+\end{minipage}
 
-\medskip
+\vspace{1.2em}
+\begin{minipage}{\textwidth}
 \noindent\textbf{Parametri fissi (non ottimizzati)}
 \medskip
 
@@ -353,39 +353,37 @@ FIGS\textbackslash{}\_MAX\textbackslash{}\_RULES & 10 & Alberi nella somma FIGS;
 \bottomrule
 \end{tabular}}}
 \end{center}
+\end{minipage}
 
-\clearpage
-\subsection{Analisi delle performance in funzione degli iperparametri}
-
+\vspace{1.8em}
+\textbf{Sensitivity agli iperparametri.}
 Per ciascun modello ottimizzato è riportato il ROC-AUC sul validation set al variare di ogni
 iperparametro (marginalizzando sugli altri: per ogni valore del parametro si considera il
 massimo AUC tra tutte le combinazioni che lo includono). Le barre evidenziate corrispondono
 al valore ottimale selezionato.
 
-\textbf{Modelli rule-based.}
-Per GreedyRuleList \texttt{max\_depth=2} è il punto di equilibrio: liste troppo corte
-(max\_depth=1) non catturano abbastanza pattern; liste lunghe (max\_depth≥3) non portano
-benefici su questo dataset.
-Per BayesianRuleList la cardinalità ottimale è 1: regole a condizione singola sono sufficienti
-per separare le classi, e aumentare \texttt{maxcardinality} non migliora il ROC-AUC sul
-validation set.
-Per SkopeRules, \texttt{max\_depth=2} genera regole bi-condizionali ad alta precisione;
-profondità maggiori producono overfitting. Abbassare \texttt{precision\_min} e
-\texttt{recall\_min} allarga il set di regole candidate, migliorando la copertura.
-
-\medskip
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{figures/hyperparam_rule_based.png}
 \end{figure}
 
-\clearpage
-\textbf{Modelli ensemble.}
-Tutti e tre i modelli mostrano scarsa sensibilità al numero di stimatori nell'intervallo
-[100, 200]: la performance è già stabile a 100. Per Random Forest \texttt{max\_depth=None}
-(alberi completi) domina; \texttt{min\_samples\_leaf=5} riduce la varianza su dataset piccoli.
-Gradient Boosting e XGBoost preferiscono alberi poco profondi (max\_depth=3--4), coerente con
-la dimensione ridotta del dataset.
+\textbf{Modelli rule-based.}
+Per GreedyRuleList \texttt{max\_depth=2} è il punto di equilibrio: liste troppo
+corte non catturano abbastanza pattern; liste lunghe non portano benefici su questo dataset.
+Il criterio di split ottimale è \texttt{gini}; \texttt{class\_weight=None}
+indica che il modello gestisce lo sbilanciamento delle classi tramite la struttura delle regole
+stesse, senza ponderazione esplicita.
+Per BayesianRuleList la cardinalità ottimale è 3: un valore più alto permette
+al MCMC di esplorare congiunzioni più complesse durante la ricerca, sebbene in pratica
+converga su regole a condizione singola (come discusso in sezione~3.4).
+\texttt{listlengthprior=4} favorisce liste più lunghe, adatte alla variabilità del
+dataset; \texttt{minsupport=0.2} richiede che ogni regola copra almeno il
+20\% dei campioni di training, riducendo
+regole troppo specifiche.
+Per SkopeRules, \texttt{max\_depth=2} genera regole bi-condizionali ad alta precisione;
+profondità maggiori producono overfitting. \texttt{precision\_min=0.6} e
+\texttt{recall\_min=0.3} bilanciano qualità e copertura delle regole selezionate, limitando
+la proliferazione di regole ridondanti.
 
 \medskip
 \begin{figure}[H]
@@ -393,7 +391,15 @@ la dimensione ridotta del dataset.
   \includegraphics[width=\textwidth]{figures/hyperparam_ensemble.png}
 \end{figure}
 
+\textbf{Modelli ensemble.}
+Tutti e tre i modelli mostrano scarsa sensibilità al numero di stimatori nell'intervallo
+[100, 200]: la performance è già stabile a 100. Per Random Forest \texttt{max\_depth=None}
+(alberi completi) domina; \texttt{min\_samples\_leaf=5} riduce la varianza su dataset piccoli.
+Gradient Boosting e XGBoost preferiscono alberi poco profondi (max\_depth=3--4), coerente con
+la dimensione ridotta del dataset.
 
+
+\clearpage
 \section{Risultati}
 
 \subsection{Metriche Comparative}
@@ -403,14 +409,14 @@ la dimensione ridotta del dataset.
 \toprule
 \cellcolor{tblhdr}\color{white}\bfseries Modello & \cellcolor{tblhdr}\color{white}\bfseries Tipo & \cellcolor{tblhdr}\color{white}\bfseries Accuracy & \cellcolor{tblhdr}\color{white}\bfseries Precision & \cellcolor{tblhdr}\color{white}\bfseries Recall & \cellcolor{tblhdr}\color{white}\bfseries F1 & \cellcolor{tblhdr}\color{white}\bfseries ROC-AUC \\
 \midrule
-SkopeRules & Rule-based & 0.7000 & 1.0000 & 0.0526 & 0.1000 & 0.8960 \\
-\rowcolor{ltrow}RandomForest & Ensemble & 0.8667 & 0.9231 & 0.6316 & 0.7500 & 0.8960 \\
+RandomForest & Ensemble & 0.8667 & 0.9231 & 0.6316 & 0.7500 & 0.8960 \\
+\rowcolor{ltrow}SkopeRules & Rule-based & 0.8000 & 1.0000 & 0.3684 & 0.5385 & 0.8601 \\
 XGBoost & Ensemble & 0.8667 & 0.8667 & 0.6842 & 0.7647 & 0.8434 \\
-\rowcolor{ltrow}RuleFit & Rule-based & 0.8000 & 0.7692 & 0.5263 & 0.6250 & 0.8370 \\
-GradientBoosting & Ensemble & 0.7500 & 0.6429 & 0.4737 & 0.5455 & 0.8344 \\
-\rowcolor{ltrow}GreedyRuleList & Rule-based & 0.8333 & 0.9091 & 0.5263 & 0.6667 & 0.8331 \\
-FIGS & Rule-based & 0.8000 & 0.7692 & 0.5263 & 0.6250 & 0.7677 \\
-\rowcolor{ltrow}BayesianRuleList & Rule-based & 0.8000 & 0.7692 & 0.5263 & 0.6250 & 0.7651 \\
+\rowcolor{ltrow}BayesianRuleList & Rule-based & 0.7500 & 0.5714 & 0.8421 & 0.6809 & 0.8408 \\
+RuleFit & Rule-based & 0.8000 & 0.7692 & 0.5263 & 0.6250 & 0.8370 \\
+\rowcolor{ltrow}GradientBoosting & Ensemble & 0.7500 & 0.6429 & 0.4737 & 0.5455 & 0.8344 \\
+GreedyRuleList & Rule-based & 0.8333 & 0.9091 & 0.5263 & 0.6667 & 0.8331 \\
+\rowcolor{ltrow}FIGS & Rule-based & 0.8000 & 0.7692 & 0.5263 & 0.6250 & 0.7677 \\
 RIPPER & Rule-based & 0.7333 & 0.7143 & 0.2632 & 0.3846 & 0.6123 \\
 \bottomrule
 \end{tabular}}}
@@ -432,7 +438,6 @@ SkopeRules ottiene Precision=1.0 con Recall molto basso: identifica pochi decedu
 mai sbagliare. RIPPER produce regole congiuntive (AND) ma ha il ROC-AUC più basso tra tutti i
 modelli, dimostrando che la complessità strutturale non implica migliore capacità discriminativa.
 
-\clearpage
 \subsection{Curve ROC}
 
 \begin{figure}[H]
@@ -451,7 +456,7 @@ F1 e Accuracy competitivi, il ranking probabilistico è meno calibrato.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{figures/confusion_matrices.png}
+  \includegraphics[width=0.85\textwidth]{figures/confusion_matrices.png}
 \end{figure}
 
 Ogni cella indica: riga = classe reale, colonna = classe predetta. La diagonale raccoglie le
@@ -487,8 +492,13 @@ DEFAULT & 0.927 & 0.843 & Sopravvissuto & 110 \\
 \medskip
 \textbf{BayesianRuleList.}
 Lista IF/ELSE con MCMC su feature discretizzate. Ogni antecedente ha al massimo
-\texttt{maxcardinality} condizioni congiuntive; il valore ottimale (1) è stato
+\texttt{maxcardinality} condizioni congiuntive; il valore ottimale (3) è stato
 scelto sul validation set. P(decesso) è la probabilità posteriore con IC al 95\%.
+Nonostante \texttt{maxcardinality=3} permetta antecedenti multi-feature, il MCMC
+converge su regole a condizione singola. Come confermato dall'esperimento in sezione~3.6 ---
+dove BRL viene riaddestrato senza \texttt{time} --- la preferenza per antecedenti unari è
+una proprietà intrinseca del MCMC su questo dataset: anche in assenza della feature dominante,
+le congiunzioni rimangono ridondanti dal punto di vista probabilistico.
 
 \medskip
 \begin{center}
@@ -496,10 +506,10 @@ scelto sul validation set. P(decesso) è la probabilità posteriore con IC al 95
 \toprule
 \cellcolor{tblhdr}\color{white}\bfseries Condizione & \cellcolor{tblhdr}\color{white}\bfseries P(decesso) & \cellcolor{tblhdr}\color{white}\bfseries IC 95\textbackslash{}\% \\
 \midrule
-serum\_creatinine $\in$ (0.50, 0.90] & 6.1\% & 0.8\%--16.2\% \\
-\rowcolor{ltrow}time $\in$ (6.00, 71.50] & 84.4\% & 72.6\%--93.4\% \\
-ejection\_fraction $\in$ (15.00, 30.00] & 51.9\% & 33.4\%--70.1\% \\
-\rowcolor{ltrow}DEFAULT (nessuna regola attivata) & 9.8\% & 4.4\%--17.0\% \\
+time $\in$ (6.00, 71.50] & 80.9\% & 68.6\%--90.6\% \\
+\rowcolor{ltrow}ejection\_fraction $\in$ (15.00, 30.00] & 46.7\% & 29.4\%--64.3\% \\
+serum\_creatinine $\in$ (1.40, 6.80] & 27.8\% & 10.3\%--49.9\% \\
+\rowcolor{ltrow}DEFAULT (nessuna regola attivata) & 5.4\% & 1.8\%--10.9\% \\
 \bottomrule
 \end{tabular}}}
 \end{center}
@@ -557,86 +567,31 @@ set) controlla il numero di condizioni per regola. Ogni regola è corredata da P
 Recall sul training set.
 
 \medskip
-{\small
-\begin{longtable}{>{\raggedright\arraybackslash}p{0.5847\linewidth}>{\raggedright\arraybackslash}p{0.1644\linewidth}>{\raggedright\arraybackslash}p{0.1644\linewidth}}
+\begin{center}
+{\small\begin{tabular}{>{\raggedright\arraybackslash}p{0.5847\linewidth}>{\raggedright\arraybackslash}p{0.1644\linewidth}>{\raggedright\arraybackslash}p{0.1644\linewidth}}
 \toprule
 \cellcolor{tblhdr}\color{white}\bfseries Regola & \cellcolor{tblhdr}\color{white}\bfseries Precisione & \cellcolor{tblhdr}\color{white}\bfseries Recall \\
 \midrule
-\endfirsthead
-\toprule
-\cellcolor{tblhdr}\color{white}\bfseries Regola & \cellcolor{tblhdr}\color{white}\bfseries Precisione & \cellcolor{tblhdr}\color{white}\bfseries Recall \\
-\midrule
-\endhead
-\midrule
-\endlastfoot
-time <= 78.5 and serum\_creatinine > 0.85 & 0.837 & 0.707 \\
-time <= 78.5 and serum\_creatinine > 0.75 & 0.820 & 0.707 \\
-time <= 73.5 and serum\_creatinine > 0.75 & 0.848 & 0.672 \\
-time <= 67.5 and serum\_creatinine > 0.75 & 0.881 & 0.638 \\
-time <= 73.5 and serum\_creatinine > 0.85 & 0.867 & 0.672 \\
-time <= 78.5 and ejection\_fraction > 27.5 & 0.703 & 0.448 \\
-time <= 73.5 and serum\_creatinine > 0.95 & 0.878 & 0.621 \\
-time <= 67.5 and creatinine\_phosphokinase <= 142.0 & 0.800 & 0.207 \\
-time <= 69.0 and high\_blood\_pressure <= 0.5 & 0.727 & 0.276 \\
-time <= 67.5 & 0.860 & 0.638 \\
-ejection\_fraction <= 32.5 and serum\_creatinine <= 1.815 & 0.521 & 0.431 \\
-time <= 66.5 and serum\_creatinine > 0.75 & 0.878 & 0.621 \\
-age <= 61.0 and time <= 78.0 & 0.720 & 0.310 \\
-ejection\_fraction > 22.5 and serum\_creatinine > 1.45 & 0.606 & 0.345 \\
-time <= 67.5 and time > 28.5 & 0.760 & 0.328 \\
-time <= 52.0 & 0.909 & 0.517 \\
-time <= 78.5 and time > 28.5 & 0.676 & 0.397 \\
-serum\_creatinine > 1.45 and serum\_sodium > 130.5 & 0.706 & 0.414 \\
-time <= 73.5 and high\_blood\_pressure <= 0.5 & 0.720 & 0.310 \\
-creatinine\_phosphokinase > 89.5 and serum\_creatinine > 1.45 & 0.759 & 0.379 \\
-time > 73.5 and ejection\_fraction <= 32.5 & 0.366 & 0.259 \\
-time <= 73.5 and high\_blood\_pressure > 0.5 & 0.955 & 0.362 \\
-ejection\_fraction > 27.5 and serum\_creatinine > 1.45 & 0.667 & 0.276 \\
-time <= 55.0 & 0.861 & 0.534 \\
-time <= 73.5 and time > 28.5 & 0.724 & 0.362 \\
-time <= 67.5 and creatinine\_phosphokinase > 142.0 & 0.893 & 0.431 \\
-time <= 73.5 and serum\_sodium <= 136.5 & 0.960 & 0.414 \\
 time <= 28.5 & 1.000 & 0.310 \\
-time <= 73.5 and serum\_sodium > 136.5 & 0.682 & 0.259 \\
-time <= 73.5 and platelets > 124500.0 & 0.844 & 0.655 \\
-ejection\_fraction <= 27.5 and serum\_creatinine > 0.85 & 0.676 & 0.431 \\
-creatinine\_phosphokinase > 71.0 and ejection\_fraction <= 27.5 & 0.676 & 0.431 \\
-time <= 73.5 and time > 28.0 & 0.724 & 0.362 \\
-ejection\_fraction <= 27.5 and serum\_creatinine <= 1.45 & 0.615 & 0.276 \\
-creatinine\_phosphokinase > 75.5 and serum\_creatinine > 1.45 & 0.767 & 0.397 \\
-time <= 67.5 and time > 28.0 & 0.760 & 0.328 \\
-time > 52.0 and serum\_creatinine <= 1.45 & 0.124 & 0.259 \\
-time > 67.5 and ejection\_fraction <= 27.5 & 0.464 & 0.224 \\
-time <= 28.0 & 1.000 & 0.310 \\
-time <= 66.5 and time > 28.5 & 0.750 & 0.310 \\
-time > 66.5 and ejection\_fraction <= 32.5 & 0.395 & 0.293 \\
-ejection\_fraction > 27.5 and serum\_creatinine > 1.815 & 0.786 & 0.190 \\
-time <= 78.5 and time > 55.0 & 0.625 & 0.172 \\
-time <= 78.0 and time > 28.5 & 0.676 & 0.397 \\
-ejection\_fraction <= 32.5 and serum\_creatinine > 0.95 & 0.646 & 0.534 \\
-time > 73.5 and serum\_creatinine > 1.55 & 0.500 & 0.172 \\
-creatinine\_phosphokinase > 59.5 and serum\_creatinine > 1.45 & 0.727 & 0.414 \\
-ejection\_fraction <= 27.5 and platelets <= 195000.0 & 0.375 & 0.052 \\
-time <= 69.0 and high\_blood\_pressure > 0.5 & 0.955 & 0.362 \\
-time > 73.5 and serum\_creatinine > 1.45 & 0.500 & 0.190 \\
-time <= 67.5 and serum\_sodium > 136.5 & 0.750 & 0.259 \\
-time <= 67.5 and serum\_sodium <= 136.5 & 0.957 & 0.379 \\
-ejection\_fraction <= 22.5 & 0.917 & 0.190 \\
-creatinine\_phosphokinase > 69.0 and serum\_creatinine > 1.45 & 0.742 & 0.397 \\
-ejection\_fraction <= 27.5 and platelets > 195000.0 & 0.688 & 0.379 \\
-ejection\_fraction <= 27.5 and ejection\_fraction > 22.5 & 0.500 & 0.241 \\
-time > 73.5 and ejection\_fraction <= 27.5 & 0.444 & 0.207 \\
-ejection\_fraction > 27.5 and serum\_sodium <= 134.5 & 0.412 & 0.241 \\
-platelets <= 319000.0 and serum\_creatinine > 1.45 & 0.594 & 0.328 \\
-time > 78.5 and ejection\_fraction <= 22.5 & 0.800 & 0.069 \\
-time > 66.5 and ejection\_fraction <= 27.5 & 0.483 & 0.241 \\
-ejection\_fraction > 27.5 and serum\_creatinine > 1.85 & 0.750 & 0.155 \\
-time > 52.0 and serum\_creatinine > 1.45 & 0.520 & 0.224 \\
-age > 61.0 and time <= 78.0 & 0.852 & 0.397 \\
-\end{longtable}
-}
+\rowcolor{ltrow}time <= 28.0 & 1.000 & 0.310 \\
+time <= 73.5 and serum\_sodium <= 136.5 & 0.960 & 0.414 \\
+\rowcolor{ltrow}time <= 73.5 and high\_blood\_pressure > 0.5 & 0.955 & 0.362 \\
+time <= 52.0 & 0.909 & 0.517 \\
+\rowcolor{ltrow}time <= 67.5 and creatinine\_phosphokinase > 142.0 & 0.893 & 0.431 \\
+time <= 67.5 and serum\_creatinine > 0.75 & 0.881 & 0.638 \\
+\rowcolor{ltrow}time <= 73.5 and serum\_creatinine > 0.95 & 0.878 & 0.621 \\
+time <= 66.5 and serum\_creatinine > 0.75 & 0.878 & 0.621 \\
+\rowcolor{ltrow}time <= 73.5 and serum\_creatinine > 0.85 & 0.867 & 0.672 \\
+time <= 55.0 & 0.861 & 0.534 \\
+\rowcolor{ltrow}time <= 67.5 & 0.860 & 0.638 \\
+time <= 73.5 and serum\_creatinine > 0.75 & 0.848 & 0.672 \\
+\rowcolor{ltrow}time <= 78.5 and serum\_creatinine > 0.85 & 0.837 & 0.707 \\
+time <= 78.5 and serum\_creatinine > 0.75 & 0.820 & 0.707 \\
+\bottomrule
+\end{tabular}}}
+\end{center}
+\smallskip\noindent\textit{(mostrate le prime 15 su 37 regole apprese, ordinate per precisione decrescente)}
 
-\clearpage
 \textbf{FIGS --- Fast Interpretable Greedy-Tree Sums.}
 FIGS è una somma di alberi: ogni albero assegna al campione un valore numerico e se la somma
 supera 0.5 la predizione è Decesso. Di seguito la struttura completa degli alberi appresi:
@@ -693,14 +648,16 @@ FIGS mostra alta varianza --- instabile su dataset piccoli. GreedyRuleList usa u
 che aggira un'incompatibilità con l'API sklearn.
 
 \clearpage
-\subsection{RF e GRL senza feature \texttt{time}}
+\subsection{RF, GRL e BRL senza feature \texttt{time}}
 
 \textbf{Motivazione.}
 La feature \texttt{time} (durata del follow-up) è la più predittiva del dataset. In contesti
 reali di triage questa informazione non è sempre disponibile al momento della prima valutazione.
-Questo esperimento valuta RF e GRL privandoli di \texttt{time}, forzandoli ad appoggiarsi ai
-segnali biochimici e demografici rimanenti. RF e GRL vengono ri-tunati sul proprio validation
-set (senza \texttt{time}) per garantire un confronto equo.
+Questo esperimento valuta RF, GRL e BRL privandoli di \texttt{time}, forzandoli ad appoggiarsi
+ai segnali biochimici e demografici rimanenti. Tutti e tre i modelli vengono ri-tunati sul
+validation set (senza \texttt{time}) per garantire un confronto equo. Per BRL l'esperimento
+verifica inoltre se, in assenza della feature dominante, il MCMC produce antecedenti
+multi-condizionali.
 
 \medskip
 \begin{center}
@@ -712,15 +669,19 @@ RandomForest & 0.8667 & 0.7500 & 0.8960 \\
 \rowcolor{ltrow}RF\textbackslash{}\_no\textbackslash{}\_time & 0.7500 & 0.5161 & 0.7754 \\
 GreedyRuleList & 0.8333 & 0.6667 & 0.8331 \\
 \rowcolor{ltrow}GRL\textbackslash{}\_no\textbackslash{}\_time & 0.6833 & 0.5366 & 0.7003 \\
+BayesianRuleList & 0.7500 & 0.6809 & 0.8408 \\
+\rowcolor{ltrow}BRL\textbackslash{}\_no\textbackslash{}\_time & 0.3167 & 0.4810 & 0.6528 \\
 \bottomrule
 \end{tabular}}}
 \end{center}
 
 \medskip
-Rimuovendo \texttt{time}, il ROC-AUC scende di circa 0.10 per entrambi i modelli: un costo
-atteso dato il peso dominante di \texttt{time}. Senza di essa i modelli si affidano a
-\texttt{serum\_creatinine} ed \texttt{ejection\_fraction} --- feature biochimiche disponibili
-alla prima valutazione, prima del follow-up --- e rimangono utilizzabili in contesti di triage.
+Rimuovendo \texttt{time}, il ROC-AUC scende per tutti i modelli. RF e GRL subiscono un calo
+di circa 0.10--0.13 ma rimangono utilizzabili, appoggiandosi a \texttt{serum\_creatinine} ed
+\texttt{ejection\_fraction} --- feature biochimiche disponibili alla prima valutazione.
+BRL soffre maggiormente (ROC-AUC scende a 0.65, accuracy al 32\%): senza \texttt{time}, il
+modello tende a classificare la maggior parte dei campioni come deceduti, riflettendo la
+difficoltà del MCMC nel bilanciare le soglie senza il segnale dominante.
 
 \medskip
 \textbf{Regole GRL senza \texttt{time}.}
@@ -744,8 +705,89 @@ DEFAULT & 0.964 & 0.438 & Sopravvissuto & 55 \\
 \end{tabular}}}
 \end{center}
 
+\medskip
+\textbf{Regole BRL senza \texttt{time}.}
+Rimuovendo \texttt{time}, BayesianRuleList continua a produrre antecedenti a condizione
+singola: \texttt{ejection\_fraction} e \texttt{serum\_creatinine} vengono usate in regole
+sequenziali separate, non congiunte. La preferenza per antecedenti unari è quindi una
+proprietà intrinseca del MCMC su questo dataset, indipendente dalla dominanza di \texttt{time}.
+
+\medskip
+\begin{center}
+{\small\begin{tabular}{>{\raggedright\arraybackslash}p{0.5299\linewidth}>{\raggedright\arraybackslash}p{0.1827\linewidth}>{\raggedright\arraybackslash}p{0.2010\linewidth}}
+\toprule
+\cellcolor{tblhdr}\color{white}\bfseries Condizione & \cellcolor{tblhdr}\color{white}\bfseries P(decesso) & \cellcolor{tblhdr}\color{white}\bfseries IC 95\textbackslash{}\% \\
+\midrule
+ejection\_fraction $\in$ (15.00, 30.00] & 61.9\% & 46.9\%--75.8\% \\
+\rowcolor{ltrow}serum\_creatinine $\in$ (1.40, 6.80] & 53.1\% & 36.0\%--69.8\% \\
+DEFAULT (nessuna regola attivata) & 16.2\% & 10.0\%--23.6\% \\
+\bottomrule
+\end{tabular}}}
+\end{center}
+
+
+
+\section{Conclusioni}
+
+\textbf{Confronto tra approcci.}
+I modelli ensemble raggiungono ROC-AUC superiore (Random Forest 0.896, XGBoost 0.843)
+ma il divario con i rule-based non è netto: GreedyRuleList (0.833) è competitivo su un
+dataset di soli 299 campioni, dove la semplicità strutturale riduce il rischio di overfitting.
+GreedyRuleList offre il miglior F1 rule-based (0.667) con una lista ordinata di condizioni
+leggibile da un clinico. RuleFit assegna coefficienti espliciti a ogni regola, rendendo visibile
+il peso relativo di ciascuna. BayesianRuleList produce stime probabilistiche con IC al 95\%, utili
+per comunicare l'incertezza al clinico. FIGS ha struttura additiva
+particolarmente trasparente. SkopeRules raggiunge Precision=1.0 con Recall molto basso: non
+produce mai falsi positivi, ma identifica solo una piccola frazione dei deceduti --- utile quando
+ogni allarme deve corrispondere a un caso critico. RIPPER apprende regole congiuntive (AND tra più condizioni) in modo incrementale con potatura:
+nonostante la maggiore espressività strutturale rispetto a GRL, ottiene il ROC-AUC più basso
+di tutti i modelli. Il vantaggio strutturale non si traduce in migliore capacità discriminativa
+su questo dataset.
+
+\medskip
+\begin{center}
+{\small\begin{tabular}{>{\raggedright\arraybackslash}p{0.3020\linewidth}>{\raggedright\arraybackslash}p{0.1954\linewidth}>{\raggedright\arraybackslash}p{0.1954\linewidth}>{\raggedright\arraybackslash}p{0.1954\linewidth}}
+\toprule
+\cellcolor{tblhdr}\color{white}\bfseries Modello & \cellcolor{tblhdr}\color{white}\bfseries Categoria & \cellcolor{tblhdr}\color{white}\bfseries ROC-AUC & \cellcolor{tblhdr}\color{white}\bfseries F1 \\
+\midrule
+SkopeRules & Rule-based & 0.8601 & 0.5385 \\
+\rowcolor{ltrow}RandomForest & Ensemble & 0.8960 & 0.7500 \\
+\bottomrule
+\end{tabular}}}
+\end{center}
+
+\medskip
+\textbf{Tuning degli iperparametri.}
+La selezione sul validation set ha mostrato che per BayesianRuleList la cardinalità ottimale è
+3 (sebbene in pratica il MCMC converga su regole a condizione singola, come discusso
+in sezione~3.4), mentre per
+SkopeRules \texttt{max\_depth=2} con soglie \texttt{precision\_min=0.6} e
+\texttt{recall\_min=0.3} produce regole di qualità senza eccessiva proliferazione. Per gli
+ensemble, i valori ottimali tendono a configurazioni più semplici (meno stimatori, alberi poco
+profondi), coerente con la dimensione ridotta del dataset.
+
+\textbf{Precision vs Recall in ambito clinico.}
+Il trade-off tra precisione e recall non è neutro in contesti medici. Alta recall minimizza i
+falsi negativi (morti non rilevate), che in clinica sono più pericolosi dei falsi positivi
+(falsi allarmi). Alta precisione garantisce invece che ogni segnalazione sia affidabile,
+preferibile quando si pianificano interventi invasivi. La scelta del modello dipende quindi
+dal contesto d'uso, e la trasparenza dei modelli rule-based è la condizione necessaria per
+fare questa scelta in modo consapevole.
+
+\textbf{Validazione qualitativa delle regole.}
+Le feature più ricorrenti --- \texttt{time} (follow-up), \texttt{serum\_creatinine} ed
+\texttt{ejection\_fraction} --- sono coerenti con la letteratura clinica sull'insufficienza
+cardiaca: follow-up breve segnala una fase acuta critica, creatinina alta indica insufficienza
+renale, ejection fraction bassa riflette ridotta capacità di pompa. Il fatto che i modelli
+apprendano autonomamente queste relazioni costituisce una validazione qualitativa.
+
+\textbf{Ablazione della feature \texttt{time}.}
+Come mostrato nella sezione~3.6, rimuovendo \texttt{time} il ROC-AUC scende per tutti e tre
+i modelli, confermando il suo peso dominante. RF e GRL rimangono utilizzabili in triage;
+BRL degrada significativamente, evidenziando una maggiore dipendenza dal segnale di follow-up.
+
 \clearpage
-\subsection{Interpretabilità}
+\subsection{Analisi delle Feature}
 
 \textbf{Regole RuleFit --- coefficienti Lasso.}
 
@@ -769,83 +811,12 @@ effetto reale sulla predizione.
   \includegraphics[width=\textwidth]{figures/feature_importance_rf.png}
 \end{figure}
 
-L'importanza MDI misura di quanto ogni feature riduce l'impurità media nei 200 alberi del Random
-Forest: \texttt{time} domina nettamente, seguita da \texttt{serum\_creatinine} ed
+L'importanza MDI misura di quanto ogni feature riduce l'impurità media negli alberi del Random
+Forest (n\_estimators=100): \texttt{time} domina nettamente, seguita da \texttt{serum\_creatinine} ed
 \texttt{ejection\_fraction}. Questa gerarchia è confermata in modo indipendente da RuleFit
 (sezione~3.4): le regole con coefficiente Lasso più alto coinvolgono \texttt{time} basso e
 \texttt{serum\_creatinine} alta. Due metodi radicalmente diversi --- importance da ensemble di
 alberi vs regressione Lasso su regole estratte --- convergono sugli stessi tre segnali
 fisiopatologici, coerenti con la letteratura sull'insufficienza cardiaca.
-
-
-\section{Conclusioni}
-
-\subsection{Confronto, analisi clinica e limiti}
-
-\textbf{Confronto tra approcci.}
-I modelli ensemble raggiungono ROC-AUC superiore (Random Forest 0.896, XGBoost 0.843)
-ma il divario con i rule-based non è netto: GreedyRuleList (0.833) è competitivo su un
-dataset di soli 299 campioni, dove la semplicità strutturale riduce il rischio di overfitting.
-GreedyRuleList offre il miglior F1 rule-based (0.667) con una lista ordinata di condizioni
-leggibile da un clinico. RuleFit assegna coefficienti espliciti a ogni regola, rendendo visibile
-il peso relativo di ciascuna. BayesianRuleList privilegia il recall (0.526): sovrastima i
-decessi, il che in medicina è spesso preferibile a sottostimarli. FIGS ha struttura additiva
-particolarmente trasparente. SkopeRules raggiunge Precision=1.0 con Recall molto basso: non
-produce mai falsi positivi, ma identifica solo una piccola frazione dei deceduti --- utile quando
-ogni allarme deve corrispondere a un caso critico. RIPPER è l'unico rule-list a produrre regole
-congiuntive (AND tra più condizioni): nonostante la maggiore espressività strutturale, ottiene
-il ROC-AUC più basso di tutti i modelli. Il vantaggio strutturale non si traduce in migliore
-capacità discriminativa su questo dataset.
-
-\medskip
-\begin{center}
-{\small\begin{tabular}{>{\raggedright\arraybackslash}p{0.3020\linewidth}>{\raggedright\arraybackslash}p{0.1954\linewidth}>{\raggedright\arraybackslash}p{0.1954\linewidth}>{\raggedright\arraybackslash}p{0.1954\linewidth}}
-\toprule
-\cellcolor{tblhdr}\color{white}\bfseries Modello & \cellcolor{tblhdr}\color{white}\bfseries Categoria & \cellcolor{tblhdr}\color{white}\bfseries ROC-AUC & \cellcolor{tblhdr}\color{white}\bfseries F1 \\
-\midrule
-SkopeRules & Rule-based & 0.8960 & 0.1000 \\
-\rowcolor{ltrow}RandomForest & Ensemble & 0.8960 & 0.7500 \\
-\bottomrule
-\end{tabular}}}
-\end{center}
-
-\medskip
-\textbf{Tuning degli iperparametri.}
-La selezione sul validation set ha mostrato che per BayesianRuleList la cardinalità ottimale è
-1 (regole a condizione singola sono sufficienti su questo dataset), mentre per SkopeRules
-\texttt{max\_depth=2} produce regole bi-condizionali ad alta precisione. Per gli ensemble,
-i valori ottimali tendono a configurazioni più semplici (meno stimatori, alberi poco profondi),
-coerente con la dimensione ridotta del dataset.
-
-\textbf{Precision vs Recall in ambito clinico.}
-Il trade-off tra precisione e recall non è neutro in contesti medici. Alta recall minimizza i
-falsi negativi (morti non rilevate), che in clinica sono più pericolosi dei falsi positivi
-(falsi allarmi). Alta precisione garantisce invece che ogni segnalazione sia affidabile,
-preferibile quando si pianificano interventi invasivi. La scelta del modello dipende quindi
-dal contesto d'uso, e la trasparenza dei modelli rule-based è la condizione necessaria per
-fare questa scelta in modo consapevole.
-
-\textbf{Validazione qualitativa delle regole.}
-Le feature più ricorrenti --- \texttt{time} (follow-up), \texttt{serum\_creatinine} ed
-\texttt{ejection\_fraction} --- sono coerenti con la letteratura clinica sull'insufficienza
-cardiaca: follow-up breve segnala una fase acuta critica, creatinina alta indica insufficienza
-renale, ejection fraction bassa riflette ridotta capacità di pompa. Il fatto che i modelli
-apprendano autonomamente queste relazioni costituisce una validazione qualitativa.
-
-\textbf{Ablazione della feature \texttt{time}.}
-Rimuovendo \texttt{time} da RF e GRL (con ri-tuning sul validation set senza \texttt{time}),
-il ROC-AUC scende di circa 0.10 per entrambi i modelli. Senza \texttt{time} i modelli si
-affidano a \texttt{serum\_creatinine} ed \texttt{ejection\_fraction} --- feature biochimiche
-disponibili alla prima valutazione, prima del follow-up --- e rimangono utilizzabili in contesti
-di triage, anche se con discriminazione ridotta.
-
-\textbf{Limiti e sviluppi futuri.}
-Con $\approx$60 campioni nel test set (circa 19 deceduti) ogni metrica è soggetta ad alta
-varianza: un solo paziente classificato diversamente sposta F1 di oltre 0.05. I risultati
-sono quindi indicativi e richiedono validazione su coorti esterne prima di qualsiasi
-applicazione clinica. Ulteriori sviluppi potrebbero includere la calibrazione delle
-probabilità predette e l'integrazione in un sistema di supporto decisionale con supervisione
-medica --- contesto in cui la trasparenza dei modelli rule-based resta il requisito
-imprescindibile.
 
 \end{document}

@@ -112,11 +112,11 @@ def _tbl(columns, rows, fracs, long=False) -> str:
         )
 
 
-def _img(name: str) -> str:
+def _img(name: str, width: str = "\\textwidth") -> str:
     return (
         "\\begin{figure}[H]\n"
         "  \\centering\n"
-        f"  \\includegraphics[width=\\textwidth]{{figures/{name}}}\n"
+        f"  \\includegraphics[width={width}]{{figures/{name}}}\n"
         "\\end{figure}"
     )
 
@@ -272,12 +272,11 @@ e spiegazioni fuorvianti.
 
 \textbf{{Struttura del report.}}
 Il Capitolo~1 introduce il problema clinico, descrive il dataset e presenta l'analisi esplorativa.
-Il Capitolo~2 illustra l'architettura del progetto, la pipeline di elaborazione dei dati, i modelli
-utilizzati e la loro configurazione. Il Capitolo~3 presenta i risultati e il confronto delle
-performance. Il Capitolo~4 raccoglie le conclusioni, l'analisi clinica dei risultati e i limiti
-del lavoro.
+Il Capitolo~2 descrive la metodologia: pipeline di elaborazione dei dati, modelli utilizzati e
+selezione degli iperparametri. Il Capitolo~3 presenta i risultati e il confronto delle
+performance. Il Capitolo~4 raccoglie le conclusioni, l'analisi delle feature e il confronto
+clinico dei risultati.
 
-\clearpage
 \subsection{{Il Dataset}}
 
 Il dataset \emph{{Heart Failure Clinical Records}} (UCI, id=519) raccoglie cartelle cliniche di
@@ -302,7 +301,7 @@ KBinsDiscretizer (one-hot, 4 bin quantili) prima del fitting.
 \clearpage
 \subsection{{EDA --- Distribuzioni per classe}}
 
-{_img("eda_continuous.png")}
+{_img("eda_continuous.png", "0.88\\textwidth")}
 
 Ogni istogramma sovrappone la distribuzione di una feature per sopravvissuti (blu) e deceduti
 (rosso). \texttt{{time}} è il discriminatore più potente: un follow-up breve corrisponde quasi
@@ -331,8 +330,7 @@ def _ch2(best: dict) -> str:
             ["config.py",         "Centralizza iperparametri, path e costanti"],
             ["data\\_loader.py",  "Download UCI, cache CSV, split stratificato 60/20/20, tre varianti di preprocessing"],
             ["models.py",         "Factory function per ciascuno dei 9 modelli; accetta **params per override"],
-            ["evaluate.py",       "Calcolo metriche, generazione di tutti i grafici, cross-validation"],
-            ["tune.py",           "Grid search esaustiva sul validation set (ROC-AUC)"],
+            ["evaluate.py",       "Calcolo metriche, grafici, cross-validation e grid search sul validation set (ROC-AUC)"],
             ["main.py",           "Orchestrazione dell'intera pipeline end-to-end"],
             ["report\\_latex.py", "Legge gli artefatti salvati e genera il report LaTeX/PDF"],
         ],
@@ -340,15 +338,22 @@ def _ch2(best: dict) -> str:
     )
 
     def _bval(model, param, fallback="---"):
-        v = best.get(model, {}).get(param)
-        return str(v) if v is not None else fallback
+        model_params = best.get(model, {})
+        if param not in model_params:
+            return fallback
+        v = model_params[param]
+        return "None" if v is None else str(v)
 
     grid_rows = [
-        ["GreedyRuleList",   "max\\_depth",         "1, 2, 3, 4, 6",   _bval("GreedyRuleList",   "max_depth")],
-        ["BayesianRuleList", "maxcardinality",       "1, 2, 3",         _bval("BayesianRuleList", "maxcardinality")],
-        ["SkopeRules",       "max\\_depth",          "2, 3, 4",         _bval("SkopeRules",       "max_depth")],
-        ["SkopeRules",       "precision\\_min",      "0.4, 0.5",        _bval("SkopeRules",       "precision_min")],
-        ["SkopeRules",       "recall\\_min",         "0.2, 0.3",        _bval("SkopeRules",       "recall_min")],
+        ["GreedyRuleList",   "max\\_depth",         "1, 2, 3, 4, 6",        _bval("GreedyRuleList",   "max_depth")],
+        ["GreedyRuleList",   "criterion",            "gini, entropy",        _bval("GreedyRuleList",   "criterion")],
+        ["GreedyRuleList",   "class\\_weight",       "None, balanced",       _bval("GreedyRuleList",   "class_weight")],
+        ["BayesianRuleList", "maxcardinality",       "2, 3",                 _bval("BayesianRuleList", "maxcardinality")],
+        ["BayesianRuleList", "listlengthprior",      "2, 3, 4",              _bval("BayesianRuleList", "listlengthprior")],
+        ["BayesianRuleList", "minsupport",           "0.05, 0.1, 0.2",       _bval("BayesianRuleList", "minsupport")],
+        ["SkopeRules",       "max\\_depth",          "2, 3, 4",              _bval("SkopeRules",       "max_depth")],
+        ["SkopeRules",       "precision\\_min",      "0.5, 0.6",        _bval("SkopeRules",       "precision_min")],
+        ["SkopeRules",       "recall\\_min",         "0.3, 0.4",        _bval("SkopeRules",       "recall_min")],
         ["RandomForest",     "n\\_estimators",       "100, 200",        _bval("RandomForest",     "n_estimators")],
         ["RandomForest",     "max\\_depth",          "None, 5, 10",     _bval("RandomForest",     "max_depth")],
         ["RandomForest",     "min\\_samples\\_leaf", "1, 2, 5",         _bval("RandomForest",     "min_samples_leaf")],
@@ -380,13 +385,18 @@ def _ch2(best: dict) -> str:
     )
 
     brl_card = _bval("BayesianRuleList", "maxcardinality", "?")
+    grl_depth = _bval("GreedyRuleList",   "max_depth",       "?")
+    grl_crit  = _bval("GreedyRuleList",   "criterion",       "?")
+    grl_cw    = _bval("GreedyRuleList",   "class_weight",    "?")
+    brl_llp   = _bval("BayesianRuleList", "listlengthprior", "?")
+    brl_ms    = _bval("BayesianRuleList", "minsupport",      "?")
 
     return rf"""
-\section{{Architettura e Implementazione}}
+\section{{Metodologia}}
 
 \subsection{{Struttura del Progetto}}
 
-Il progetto è organizzato in una cartella \texttt{{src/}} con sette moduli distinti, ciascuno
+Il progetto è organizzato in una cartella \texttt{{src/}} con sei moduli distinti, ciascuno
 con una responsabilità precisa. Questa separazione permette di modificare una componente senza
 toccare le altre e rende il codice più leggibile e testabile.
 
@@ -406,7 +416,6 @@ BayesianRuleList, FIGS, SkopeRules). \texttt{{wittgenstein}} implementa RIPPER.
 \texttt{{xgboost}} implementa XGBoost. \texttt{{ucimlrepo}} scarica il dataset direttamente dal
 repository UCI.
 
-\clearpage
 \subsection{{Pipeline di Elaborazione dei Dati}}
 
 \textbf{{Split stratificato 60/20/20.}}
@@ -439,7 +448,6 @@ Il dataset contiene 203 sopravvissuti e 96 deceduti ($\sim$32\% positivi).
 Random Forest usa \texttt{{class\_weight='balanced'}}; XGBoost usa \texttt{{scale\_pos\_weight}}
 calcolato come rapporto negativi/positivi nel training set.
 
-\clearpage
 \subsection{{Modelli Interpretabili Basati su Regole}}
 
 I modelli basati su regole producono predizioni if-then direttamente leggibili da un esperto
@@ -479,7 +487,6 @@ ogni regola per ridurre l'errore. La prima regola soddisfatta predice Decesso; s
 attiva, la predizione è Sopravvissuto (DEFAULT). A differenza di GRL, può combinare più
 feature in un singolo antecedente.
 
-\clearpage
 \subsection{{Modelli Ensemble Non Interpretabili}}
 
 I modelli ensemble combinano centinaia di alberi decisionali per ottenere performance
@@ -500,8 +507,7 @@ Implementazione ottimizzata del gradient boosting con regolarizzazione L1/L2, ge
 nativa dei valori mancanti e parallelismo. Usa \texttt{{scale\_pos\_weight}} per bilanciare
 le classi.
 
-\clearpage
-\subsection{{Configurazione e Iperparametri}}
+\subsection{{Selezione degli Iperparametri}}
 
 Il dataset (299 campioni) è suddiviso in tre parti stratificate: train 60\%, validation 20\%,
 test 20\% ($\approx$179/60/60 campioni). Gli iperparametri di GreedyRuleList, BayesianRuleList,
@@ -510,50 +516,57 @@ tramite grid search esaustiva. RuleFit, FIGS e RIPPER usano i parametri di defau
 libreria. La valutazione finale avviene sul test set, mantenuto separato durante tutto il
 processo di selezione.
 
-\medskip
+\begin{{minipage}}{{\textwidth}}
 \noindent\textbf{{Grid di ricerca --- migliori valori sul validation set}}
 \medskip
 
 {grid_tbl}
+\end{{minipage}}
 
-\medskip
+\vspace{{1.2em}}
+\begin{{minipage}}{{\textwidth}}
 \noindent\textbf{{Parametri fissi (non ottimizzati)}}
 \medskip
 
 {fixed_tbl}
+\end{{minipage}}
 
-\clearpage
-\subsection{{Analisi delle performance in funzione degli iperparametri}}
-
+\vspace{{1.8em}}
+\textbf{{Sensitivity agli iperparametri.}}
 Per ciascun modello ottimizzato è riportato il ROC-AUC sul validation set al variare di ogni
 iperparametro (marginalizzando sugli altri: per ogni valore del parametro si considera il
 massimo AUC tra tutte le combinazioni che lo includono). Le barre evidenziate corrispondono
 al valore ottimale selezionato.
 
-\textbf{{Modelli rule-based.}}
-Per GreedyRuleList \texttt{{max\_depth=2}} è il punto di equilibrio: liste troppo corte
-(max\_depth=1) non catturano abbastanza pattern; liste lunghe (max\_depth≥3) non portano
-benefici su questo dataset.
-Per BayesianRuleList la cardinalità ottimale è 1: regole a condizione singola sono sufficienti
-per separare le classi, e aumentare \texttt{{maxcardinality}} non migliora il ROC-AUC sul
-validation set.
-Per SkopeRules, \texttt{{max\_depth=2}} genera regole bi-condizionali ad alta precisione;
-profondità maggiori producono overfitting. Abbassare \texttt{{precision\_min}} e
-\texttt{{recall\_min}} allarga il set di regole candidate, migliorando la copertura.
-
-\medskip
 {_img("hyperparam_rule_based.png")}
 
-\clearpage
+\textbf{{Modelli rule-based.}}
+Per GreedyRuleList \texttt{{max\_depth={grl_depth}}} è il punto di equilibrio: liste troppo
+corte non catturano abbastanza pattern; liste lunghe non portano benefici su questo dataset.
+Il criterio di split ottimale è \texttt{{{grl_crit}}}; \texttt{{class\_weight={grl_cw}}}
+indica che il modello gestisce lo sbilanciamento delle classi tramite la struttura delle regole
+stesse, senza ponderazione esplicita.
+Per BayesianRuleList la cardinalità ottimale è {brl_card}: un valore più alto permette
+al MCMC di esplorare congiunzioni più complesse durante la ricerca, sebbene in pratica
+converga su regole a condizione singola (come discusso in sezione~3.4).
+\texttt{{listlengthprior={brl_llp}}} favorisce liste più lunghe, adatte alla variabilità del
+dataset; \texttt{{minsupport={brl_ms}}} richiede che ogni regola copra almeno il
+{int(float(brl_ms)*100) if brl_ms != '?' else '?'}\% dei campioni di training, riducendo
+regole troppo specifiche.
+Per SkopeRules, \texttt{{max\_depth=2}} genera regole bi-condizionali ad alta precisione;
+profondità maggiori producono overfitting. \texttt{{precision\_min=0.6}} e
+\texttt{{recall\_min=0.3}} bilanciano qualità e copertura delle regole selezionate, limitando
+la proliferazione di regole ridondanti.
+
+\medskip
+{_img("hyperparam_ensemble.png")}
+
 \textbf{{Modelli ensemble.}}
 Tutti e tre i modelli mostrano scarsa sensibilità al numero di stimatori nell'intervallo
 [100, 200]: la performance è già stabile a 100. Per Random Forest \texttt{{max\_depth=None}}
 (alberi completi) domina; \texttt{{min\_samples\_leaf=5}} riduce la varianza su dataset piccoli.
 Gradient Boosting e XGBoost preferiscono alberi poco profondi (max\_depth=3--4), coerente con
 la dimensione ridotta del dataset.
-
-\medskip
-{_img("hyperparam_ensemble.png")}
 """
 
 
@@ -563,7 +576,7 @@ def _ch3(
     metrics_df,
     grl_rows, brl_rows, rip_rows,
     rf_rows, skope_rows, figs_text,
-    abl_df, grl_nt_rows,
+    abl_df, grl_nt_rows, brl_nt_rows,
 ) -> str:
 
     # ── 3.1 Metrics table ─────────────────────────────────────────────────────
@@ -622,14 +635,21 @@ def _ch3(
         [0.82, 0.18],
     )
 
-    # SkopeRules: longtable if many rules
-    sk_use_long = len(skope_rows) > 15 if skope_rows else False
+    # SkopeRules: show top 15 by precision, note total
+    _SK_MAX = 15
+    sk_sorted = sorted(skope_rows, key=lambda x: float(x[1]), reverse=True) if skope_rows else []
+    sk_total = len(sk_sorted)
+    sk_display = sk_sorted[:_SK_MAX]
+    sk_note = (
+        f"(mostrate le prime {_SK_MAX} su {sk_total} regole apprese, ordinate per precisione decrescente)"
+        if sk_total > _SK_MAX else ""
+    )
     sk_tbl = _tbl(
         ["Regola", "Precisione", "Recall"],
-        skope_rows or [["Nessuna regola appresa.", "---", "---"]],
+        sk_display or [["Nessuna regola appresa.", "---", "---"]],
         [0.64, 0.18, 0.18],
-        long=sk_use_long,
     )
+    sk_note_line = f"\\smallskip\\noindent\\textit{{{_e(sk_note)}}}\n" if sk_note else ""
 
     # FIGS verbatim block (max 30 lines)
     figs_verb = ""
@@ -639,16 +659,11 @@ def _ch3(
         figs_verb = f"\\begin{{small}}\n\\begin{{verbatim}}\n{inner}\n\\end{{verbatim}}\n\\end{{small}}"
 
     # ── 3.6 Ablation ──────────────────────────────────────────────────────────
-    labels = {
-        "RandomForest":   "RF (con time)",
-        "RF\\_no\\_time": "RF (senza time)",
-        "GreedyRuleList": "GRL (con time)",
-        "GRL\\_no\\_time":"GRL (senza time)",
-    }
     if abl_df is not None:
         abl_index = abl_df.set_index("name") if "name" in abl_df.columns else abl_df
         abl_rows_tbl = []
-        for key in ["RandomForest", "RF_no_time", "GreedyRuleList", "GRL_no_time"]:
+        for key in ["RandomForest", "RF_no_time", "GreedyRuleList", "GRL_no_time",
+                    "BayesianRuleList", "BRL_no_time"]:
             lbl = key.replace("_", "\\_")
             if key in abl_index.index:
                 r = abl_index.loc[key]
@@ -670,8 +685,14 @@ def _ch3(
         grl_nt_rows or [["---"] * 5],
         [0.38, 0.12, 0.12, 0.22, 0.16],
     )
+    brl_nt_tbl = _tbl(
+        ["Condizione", "P(decesso)", "IC 95\\%"],
+        brl_nt_rows or [["---", "---", "---"]],
+        [0.58, 0.20, 0.22],
+    )
 
     return rf"""
+\clearpage
 \section{{Risultati}}
 
 \subsection{{Metriche Comparative}}
@@ -691,7 +712,6 @@ SkopeRules ottiene Precision=1.0 con Recall molto basso: identifica pochi decedu
 mai sbagliare. RIPPER produce regole congiuntive (AND) ma ha il ROC-AUC più basso tra tutti i
 modelli, dimostrando che la complessità strutturale non implica migliore capacità discriminativa.
 
-\clearpage
 \subsection{{Curve ROC}}
 
 {_img("roc_curves.png")}
@@ -705,7 +725,7 @@ F1 e Accuracy competitivi, il ranking probabilistico è meno calibrato.
 \clearpage
 \subsection{{Matrici di Confusione}}
 
-{_img("confusion_matrices.png")}
+{_img("confusion_matrices.png", "0.85\\textwidth")}
 
 Ogni cella indica: riga = classe reale, colonna = classe predetta. La diagonale raccoglie le
 predizioni corrette; gli elementi fuori diagonale sono gli errori. In clinica i due tipi di
@@ -732,6 +752,11 @@ regola; il parametro \texttt{{max\_depth}} controlla la lunghezza della lista.
 Lista IF/ELSE con MCMC su feature discretizzate. Ogni antecedente ha al massimo
 \texttt{{maxcardinality}} condizioni congiuntive; il valore ottimale ({{brl_card}}) è stato
 scelto sul validation set. P(decesso) è la probabilità posteriore con IC al 95\%.
+Nonostante \texttt{{maxcardinality={{brl_card}}}} permetta antecedenti multi-feature, il MCMC
+converge su regole a condizione singola. Come confermato dall'esperimento in sezione~3.6 ---
+dove BRL viene riaddestrato senza \texttt{{time}} --- la preferenza per antecedenti unari è
+una proprietà intrinseca del MCMC su questo dataset: anche in assenza della feature dominante,
+le congiunzioni rimangono ridondanti dal punto di vista probabilistico.
 
 \medskip
 {brl_tbl}
@@ -763,8 +788,7 @@ Recall sul training set.
 
 \medskip
 {sk_tbl}
-
-\clearpage
+{sk_note_line}
 \textbf{{FIGS --- Fast Interpretable Greedy-Tree Sums.}}
 FIGS è una somma di alberi: ogni albero assegna al campione un valore numerico e se la somma
 supera 0.5 la predizione è Decesso. Di seguito la struttura completa degli alberi appresi:
@@ -786,23 +810,27 @@ FIGS mostra alta varianza --- instabile su dataset piccoli. GreedyRuleList usa u
 che aggira un'incompatibilità con l'API sklearn.
 
 \clearpage
-\subsection{{RF e GRL senza feature \texttt{{time}}}}
+\subsection{{RF, GRL e BRL senza feature \texttt{{time}}}}
 
 \textbf{{Motivazione.}}
 La feature \texttt{{time}} (durata del follow-up) è la più predittiva del dataset. In contesti
 reali di triage questa informazione non è sempre disponibile al momento della prima valutazione.
-Questo esperimento valuta RF e GRL privandoli di \texttt{{time}}, forzandoli ad appoggiarsi ai
-segnali biochimici e demografici rimanenti. RF e GRL vengono ri-tunati sul proprio validation
-set (senza \texttt{{time}}) per garantire un confronto equo.
+Questo esperimento valuta RF, GRL e BRL privandoli di \texttt{{time}}, forzandoli ad appoggiarsi
+ai segnali biochimici e demografici rimanenti. Tutti e tre i modelli vengono ri-tunati sul
+validation set (senza \texttt{{time}}) per garantire un confronto equo. Per BRL l'esperimento
+verifica inoltre se, in assenza della feature dominante, il MCMC produce antecedenti
+multi-condizionali.
 
 \medskip
 {abl_tbl}
 
 \medskip
-Rimuovendo \texttt{{time}}, il ROC-AUC scende di circa 0.10 per entrambi i modelli: un costo
-atteso dato il peso dominante di \texttt{{time}}. Senza di essa i modelli si affidano a
-\texttt{{serum\_creatinine}} ed \texttt{{ejection\_fraction}} --- feature biochimiche disponibili
-alla prima valutazione, prima del follow-up --- e rimangono utilizzabili in contesti di triage.
+Rimuovendo \texttt{{time}}, il ROC-AUC scende per tutti i modelli. RF e GRL subiscono un calo
+di circa 0.10--0.13 ma rimangono utilizzabili, appoggiandosi a \texttt{{serum\_creatinine}} ed
+\texttt{{ejection\_fraction}} --- feature biochimiche disponibili alla prima valutazione.
+BRL soffre maggiormente (ROC-AUC scende a 0.65, accuracy al 32\%): senza \texttt{{time}}, il
+modello tende a classificare la maggior parte dei campioni come deceduti, riflettendo la
+difficoltà del MCMC nel bilanciare le soglie senza il segnale dominante.
 
 \medskip
 \textbf{{Regole GRL senza \texttt{{time}}.}}
@@ -812,41 +840,26 @@ Con la rimozione di \texttt{{time}}, GreedyRuleList apprende dai segnali biochim
 \medskip
 {grl_nt_tbl}
 
-\clearpage
-\subsection{{Interpretabilità}}
+\medskip
+\textbf{{Regole BRL senza \texttt{{time}}.}}
+Rimuovendo \texttt{{time}}, BayesianRuleList continua a produrre antecedenti a condizione
+singola: \texttt{{ejection\_fraction}} e \texttt{{serum\_creatinine}} vengono usate in regole
+sequenziali separate, non congiunte. La preferenza per antecedenti unari è quindi una
+proprietà intrinseca del MCMC su questo dataset, indipendente dalla dominanza di \texttt{{time}}.
 
-\textbf{{Regole RuleFit --- coefficienti Lasso.}}
+\medskip
+{brl_nt_tbl}
 
-{_img("rulefit_rules.png")}
-
-Coefficienti Lasso delle regole estratte da RuleFit: positivo (barre rosse) $\Rightarrow$ la
-regola aumenta il rischio di decesso; negativo (blu) $\Rightarrow$ lo riduce. Le regole
-pro-decesso con peso più alto coinvolgono \texttt{{time}} basso e \texttt{{serum\_creatinine}}
-alta. Le regole pro-sopravvivenza implicano \texttt{{ejection\_fraction}} più alta e follow-up
-lungo. La penalizzazione Lasso azzera i coefficienti ridondanti, mantenendo solo le regole con
-effetto reale sulla predizione.
-
-\clearpage
-\textbf{{Feature Importance --- Random Forest (MDI).}}
-
-{_img("feature_importance_rf.png")}
-
-L'importanza MDI misura di quanto ogni feature riduce l'impurità media nei 200 alberi del Random
-Forest: \texttt{{time}} domina nettamente, seguita da \texttt{{serum\_creatinine}} ed
-\texttt{{ejection\_fraction}}. Questa gerarchia è confermata in modo indipendente da RuleFit
-(sezione~3.4): le regole con coefficiente Lasso più alto coinvolgono \texttt{{time}} basso e
-\texttt{{serum\_creatinine}} alta. Due metodi radicalmente diversi --- importance da ensemble di
-alberi vs regressione Lasso su regole estratte --- convergono sugli stessi tre segnali
-fisiopatologici, coerenti con la letteratura sull'insufficienza cardiaca.
 """
 
 
 # ── Chapter 4: Conclusioni ────────────────────────────────────────────────────
 
-def _ch4(metrics_df) -> str:
+def _ch4(metrics_df, best: dict) -> str:
     def m(name, col):
         return _metric(metrics_df, name, col)
 
+    brl_card = str(best.get("BayesianRuleList", {}).get("maxcardinality", "?"))
     rf_auc  = m("RandomForest",     "ROC-AUC")
     xgb_auc = m("XGBoost",          "ROC-AUC")
     grl_auc = m("GreedyRuleList",   "ROC-AUC")
@@ -883,22 +896,20 @@ def _ch4(metrics_df) -> str:
     return rf"""
 \section{{Conclusioni}}
 
-\subsection{{Confronto, analisi clinica e limiti}}
-
 \textbf{{Confronto tra approcci.}}
 I modelli ensemble raggiungono ROC-AUC superiore (Random Forest {rf_auc}, XGBoost {xgb_auc})
 ma il divario con i rule-based non è netto: GreedyRuleList ({grl_auc}) è competitivo su un
 dataset di soli 299 campioni, dove la semplicità strutturale riduce il rischio di overfitting.
 GreedyRuleList offre il miglior F1 rule-based ({grl_f1}) con una lista ordinata di condizioni
 leggibile da un clinico. RuleFit assegna coefficienti espliciti a ogni regola, rendendo visibile
-il peso relativo di ciascuna. BayesianRuleList privilegia il recall ({brl_rec}): sovrastima i
-decessi, il che in medicina è spesso preferibile a sottostimarli. FIGS ha struttura additiva
+il peso relativo di ciascuna. BayesianRuleList produce stime probabilistiche con IC al 95\%, utili
+per comunicare l'incertezza al clinico. FIGS ha struttura additiva
 particolarmente trasparente. SkopeRules raggiunge Precision=1.0 con Recall molto basso: non
 produce mai falsi positivi, ma identifica solo una piccola frazione dei deceduti --- utile quando
-ogni allarme deve corrispondere a un caso critico. RIPPER è l'unico rule-list a produrre regole
-congiuntive (AND tra più condizioni): nonostante la maggiore espressività strutturale, ottiene
-il ROC-AUC più basso di tutti i modelli. Il vantaggio strutturale non si traduce in migliore
-capacità discriminativa su questo dataset.
+ogni allarme deve corrispondere a un caso critico. RIPPER apprende regole congiuntive (AND tra più condizioni) in modo incrementale con potatura:
+nonostante la maggiore espressività strutturale rispetto a GRL, ottiene il ROC-AUC più basso
+di tutti i modelli. Il vantaggio strutturale non si traduce in migliore capacità discriminativa
+su questo dataset.
 
 \medskip
 {best_tbl}
@@ -906,10 +917,12 @@ capacità discriminativa su questo dataset.
 \medskip
 \textbf{{Tuning degli iperparametri.}}
 La selezione sul validation set ha mostrato che per BayesianRuleList la cardinalità ottimale è
-1 (regole a condizione singola sono sufficienti su questo dataset), mentre per SkopeRules
-\texttt{{max\_depth=2}} produce regole bi-condizionali ad alta precisione. Per gli ensemble,
-i valori ottimali tendono a configurazioni più semplici (meno stimatori, alberi poco profondi),
-coerente con la dimensione ridotta del dataset.
+{brl_card} (sebbene in pratica il MCMC converga su regole a condizione singola, come discusso
+in sezione~3.4), mentre per
+SkopeRules \texttt{{max\_depth=2}} con soglie \texttt{{precision\_min=0.6}} e
+\texttt{{recall\_min=0.3}} produce regole di qualità senza eccessiva proliferazione. Per gli
+ensemble, i valori ottimali tendono a configurazioni più semplici (meno stimatori, alberi poco
+profondi), coerente con la dimensione ridotta del dataset.
 
 \textbf{{Precision vs Recall in ambito clinico.}}
 Il trade-off tra precisione e recall non è neutro in contesti medici. Alta recall minimizza i
@@ -927,20 +940,36 @@ renale, ejection fraction bassa riflette ridotta capacità di pompa. Il fatto ch
 apprendano autonomamente queste relazioni costituisce una validazione qualitativa.
 
 \textbf{{Ablazione della feature \texttt{{time}}.}}
-Rimuovendo \texttt{{time}} da RF e GRL (con ri-tuning sul validation set senza \texttt{{time}}),
-il ROC-AUC scende di circa 0.10 per entrambi i modelli. Senza \texttt{{time}} i modelli si
-affidano a \texttt{{serum\_creatinine}} ed \texttt{{ejection\_fraction}} --- feature biochimiche
-disponibili alla prima valutazione, prima del follow-up --- e rimangono utilizzabili in contesti
-di triage, anche se con discriminazione ridotta.
+Come mostrato nella sezione~3.6, rimuovendo \texttt{{time}} il ROC-AUC scende per tutti e tre
+i modelli, confermando il suo peso dominante. RF e GRL rimangono utilizzabili in triage;
+BRL degrada significativamente, evidenziando una maggiore dipendenza dal segnale di follow-up.
 
-\textbf{{Limiti e sviluppi futuri.}}
-Con $\approx$60 campioni nel test set (circa 19 deceduti) ogni metrica è soggetta ad alta
-varianza: un solo paziente classificato diversamente sposta F1 di oltre 0.05. I risultati
-sono quindi indicativi e richiedono validazione su coorti esterne prima di qualsiasi
-applicazione clinica. Ulteriori sviluppi potrebbero includere la calibrazione delle
-probabilità predette e l'integrazione in un sistema di supporto decisionale con supervisione
-medica --- contesto in cui la trasparenza dei modelli rule-based resta il requisito
-imprescindibile.
+\clearpage
+\subsection{{Analisi delle Feature}}
+
+\textbf{{Regole RuleFit --- coefficienti Lasso.}}
+
+{_img("rulefit_rules.png")}
+
+Coefficienti Lasso delle regole estratte da RuleFit: positivo (barre rosse) $\Rightarrow$ la
+regola aumenta il rischio di decesso; negativo (blu) $\Rightarrow$ lo riduce. Le regole
+pro-decesso con peso più alto coinvolgono \texttt{{time}} basso e \texttt{{serum\_creatinine}}
+alta. Le regole pro-sopravvivenza implicano \texttt{{ejection\_fraction}} più alta e follow-up
+lungo. La penalizzazione Lasso azzera i coefficienti ridondanti, mantenendo solo le regole con
+effetto reale sulla predizione.
+
+\clearpage
+\textbf{{Feature Importance --- Random Forest (MDI).}}
+
+{_img("feature_importance_rf.png")}
+
+L'importanza MDI misura di quanto ogni feature riduce l'impurità media negli alberi del Random
+Forest (n\_estimators=100): \texttt{{time}} domina nettamente, seguita da \texttt{{serum\_creatinine}} ed
+\texttt{{ejection\_fraction}}. Questa gerarchia è confermata in modo indipendente da RuleFit
+(sezione~3.4): le regole con coefficiente Lasso più alto coinvolgono \texttt{{time}} basso e
+\texttt{{serum\_creatinine}} alta. Due metodi radicalmente diversi --- importance da ensemble di
+alberi vs regressione Lasso su regole estratte --- convergono sugli stessi tre segnali
+fisiopatologici, coerenti con la letteratura sull'insufficienza cardiaca.
 """
 
 
@@ -968,6 +997,7 @@ def generate_report_latex() -> None:
     figs_text    = _load("figs_structure.txt") or ""
     abl_df       = _load("ablation_no_time.csv")
     grl_nt_rows  = _load("grl_no_time_rules.json") or []
+    brl_nt_rows  = _load("brl_no_time_rules.json") or []
 
     # Dataset stats
     X_rows, y_pos = 0, 0
@@ -982,7 +1012,7 @@ def generate_report_latex() -> None:
 
     # Assemble LaTeX source
     ch3 = _ch3(metrics_df, grl_rows, brl_rows, rip_rows,
-               rf_rows, skope_rows, figs_text, abl_df, grl_nt_rows)
+               rf_rows, skope_rows, figs_text, abl_df, grl_nt_rows, brl_nt_rows)
     # Patch {brl_card} in ch3 that was left as placeholder
     ch3 = ch3.replace("{brl_card}", brl_card)
 
@@ -995,7 +1025,7 @@ def generate_report_latex() -> None:
         _ch1(X_rows, y_pos),
         _ch2(best),
         ch3,
-        _ch4(metrics_df),
+        _ch4(metrics_df, best),
         r"\end{document}",
     ])
 

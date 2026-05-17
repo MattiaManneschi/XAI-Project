@@ -2,80 +2,312 @@
   "GreedyRuleList": [
     [
       {
-        "max_depth": "1"
+        "max_depth": "1",
+        "criterion": "gini",
+        "class_weight": "None"
       },
       0.819640564826701
     ],
     [
       {
-        "max_depth": "2"
+        "max_depth": "1",
+        "criterion": "gini",
+        "class_weight": "balanced"
+      },
+      0.819640564826701
+    ],
+    [
+      {
+        "max_depth": "1",
+        "criterion": "entropy",
+        "class_weight": "None"
+      },
+      0.819640564826701
+    ],
+    [
+      {
+        "max_depth": "1",
+        "criterion": "entropy",
+        "class_weight": "balanced"
+      },
+      0.819640564826701
+    ],
+    [
+      {
+        "max_depth": "2",
+        "criterion": "gini",
+        "class_weight": "None"
       },
       0.8953786906290115
     ],
     [
       {
-        "max_depth": "3"
+        "max_depth": "2",
+        "criterion": "gini",
+        "class_weight": "balanced"
+      },
+      0.8953786906290115
+    ],
+    [
+      {
+        "max_depth": "2",
+        "criterion": "entropy",
+        "class_weight": "None"
+      },
+      0.8510911424903722
+    ],
+    [
+      {
+        "max_depth": "2",
+        "criterion": "entropy",
+        "class_weight": "balanced"
+      },
+      0.8510911424903722
+    ],
+    [
+      {
+        "max_depth": "3",
+        "criterion": "gini",
+        "class_weight": "None"
       },
       0.8940949935815146
     ],
     [
       {
-        "max_depth": "4"
+        "max_depth": "3",
+        "criterion": "gini",
+        "class_weight": "balanced"
+      },
+      0.8940949935815146
+    ],
+    [
+      {
+        "max_depth": "3",
+        "criterion": "entropy",
+        "class_weight": "None"
+      },
+      0.8767650834403081
+    ],
+    [
+      {
+        "max_depth": "3",
+        "criterion": "entropy",
+        "class_weight": "balanced"
+      },
+      0.8767650834403081
+    ],
+    [
+      {
+        "max_depth": "4",
+        "criterion": "gini",
+        "class_weight": "None"
       },
       0.8934531450577662
     ],
     [
       {
-        "max_depth": "6"
+        "max_depth": "4",
+        "criterion": "gini",
+        "class_weight": "balanced"
       },
       0.8934531450577662
+    ],
+    [
+      {
+        "max_depth": "4",
+        "criterion": "entropy",
+        "class_weight": "None"
+      },
+      0.8767650834403081
+    ],
+    [
+      {
+        "max_depth": "4",
+        "criterion": "entropy",
+        "class_weight": "balanced"
+      },
+      0.8767650834403081
+    ],
+    [
+      {
+        "max_depth": "6",
+        "criterion": "gini",
+        "class_weight": "None"
+      },
+      0.8934531450577662
+    ],
+    [
+      {
+        "max_depth": "6",
+        "criterion": "gini",
+        "class_weight": "balanced"
+      },
+      0.8934531450577662
+    ],
+    [
+      {
+        "max_depth": "6",
+        "criterion": "entropy",
+        "class_weight": "None"
+      },
+      0.8767650834403081
+    ],
+    [
+      {
+        "max_depth": "6",
+        "criterion": "entropy",
+        "class_weight": "balanced"
+      },
+      0.8767650834403081
     ]
   ],
   "BayesianRuleList": [
     [
       {
-        "maxcardinality": "1"
+        "maxcardinality": "2",
+        "listlengthprior": "2",
+        "minsupport": "0.05"
+      },
+      0.7984595635430037
+    ],
+    [
+      {
+        "maxcardinality": "2",
+        "listlengthprior": "2",
+        "minsupport": "0.1"
       },
       0.8010269576379975
     ],
     [
       {
-        "maxcardinality": "2"
+        "maxcardinality": "2",
+        "listlengthprior": "2",
+        "minsupport": "0.2"
+      },
+      0.8671373555840821
+    ],
+    [
+      {
+        "maxcardinality": "2",
+        "listlengthprior": "3",
+        "minsupport": "0.05"
+      },
+      0.7984595635430037
+    ],
+    [
+      {
+        "maxcardinality": "2",
+        "listlengthprior": "3",
+        "minsupport": "0.1"
       },
       0.8010269576379975
     ],
     [
       {
-        "maxcardinality": "3"
+        "maxcardinality": "2",
+        "listlengthprior": "3",
+        "minsupport": "0.2"
+      },
+      0.9024390243902438
+    ],
+    [
+      {
+        "maxcardinality": "2",
+        "listlengthprior": "4",
+        "minsupport": "0.05"
+      },
+      0.7984595635430037
+    ],
+    [
+      {
+        "maxcardinality": "2",
+        "listlengthprior": "4",
+        "minsupport": "0.1"
+      },
+      0.8581514762516047
+    ],
+    [
+      {
+        "maxcardinality": "2",
+        "listlengthprior": "4",
+        "minsupport": "0.2"
+      },
+      0.9024390243902438
+    ],
+    [
+      {
+        "maxcardinality": "3",
+        "listlengthprior": "2",
+        "minsupport": "0.05"
+      },
+      0.7984595635430037
+    ],
+    [
+      {
+        "maxcardinality": "3",
+        "listlengthprior": "2",
+        "minsupport": "0.1"
+      },
+      0.8671373555840821
+    ],
+    [
+      {
+        "maxcardinality": "3",
+        "listlengthprior": "2",
+        "minsupport": "0.2"
+      },
+      0.8671373555840821
+    ],
+    [
+      {
+        "maxcardinality": "3",
+        "listlengthprior": "3",
+        "minsupport": "0.05"
+      },
+      0.8658536585365854
+    ],
+    [
+      {
+        "maxcardinality": "3",
+        "listlengthprior": "3",
+        "minsupport": "0.1"
       },
       0.8010269576379975
+    ],
+    [
+      {
+        "maxcardinality": "3",
+        "listlengthprior": "3",
+        "minsupport": "0.2"
+      },
+      0.9024390243902438
+    ],
+    [
+      {
+        "maxcardinality": "3",
+        "listlengthprior": "4",
+        "minsupport": "0.05"
+      },
+      0.7984595635430037
+    ],
+    [
+      {
+        "maxcardinality": "3",
+        "listlengthprior": "4",
+        "minsupport": "0.1"
+      },
+      0.8183568677792041
+    ],
+    [
+      {
+        "maxcardinality": "3",
+        "listlengthprior": "4",
+        "minsupport": "0.2"
+      },
+      0.9146341463414633
     ]
   ],
   "SkopeRules": [
-    [
-      {
-        "max_depth": "2",
-        "precision_min": "0.4",
-        "recall_min": "0.2"
-      },
-      0.9120667522464698
-    ],
-    [
-      {
-        "max_depth": "2",
-        "precision_min": "0.4",
-        "recall_min": "0.3"
-      },
-      0.9075738125802311
-    ],
-    [
-      {
-        "max_depth": "2",
-        "precision_min": "0.5",
-        "recall_min": "0.2"
-      },
-      0.9069319640564826
-    ],
     [
       {
         "max_depth": "2",
@@ -86,27 +318,27 @@
     ],
     [
       {
-        "max_depth": "3",
-        "precision_min": "0.4",
-        "recall_min": "0.2"
+        "max_depth": "2",
+        "precision_min": "0.5",
+        "recall_min": "0.4"
       },
-      0.8825417201540436
+      0.8844672657252888
     ],
     [
       {
-        "max_depth": "3",
-        "precision_min": "0.4",
+        "max_depth": "2",
+        "precision_min": "0.6",
         "recall_min": "0.3"
       },
-      0.8780487804878049
+      0.9075738125802311
     ],
     [
       {
-        "max_depth": "3",
-        "precision_min": "0.5",
-        "recall_min": "0.2"
+        "max_depth": "2",
+        "precision_min": "0.6",
+        "recall_min": "0.4"
       },
-      0.8838254172015405
+      0.87997432605905
     ],
     [
       {
@@ -118,16 +350,32 @@
     ],
     [
       {
-        "max_depth": "4",
-        "precision_min": "0.4",
-        "recall_min": "0.2"
+        "max_depth": "3",
+        "precision_min": "0.5",
+        "recall_min": "0.4"
       },
-      0.8876765083440308
+      0.8517329910141207
+    ],
+    [
+      {
+        "max_depth": "3",
+        "precision_min": "0.6",
+        "recall_min": "0.3"
+      },
+      0.8761232349165595
+    ],
+    [
+      {
+        "max_depth": "3",
+        "precision_min": "0.6",
+        "recall_min": "0.4"
+      },
+      0.8427471116816431
     ],
     [
       {
         "max_depth": "4",
-        "precision_min": "0.4",
+        "precision_min": "0.5",
         "recall_min": "0.3"
       },
       0.8549422336328626
@@ -136,17 +384,25 @@
       {
         "max_depth": "4",
         "precision_min": "0.5",
-        "recall_min": "0.2"
+        "recall_min": "0.4"
       },
-      0.885109114249037
+      0.8055198973042361
     ],
     [
       {
         "max_depth": "4",
-        "precision_min": "0.5",
+        "precision_min": "0.6",
         "recall_min": "0.3"
       },
-      0.8549422336328626
+      0.8536585365853658
+    ],
+    [
+      {
+        "max_depth": "4",
+        "precision_min": "0.6",
+        "recall_min": "0.4"
+      },
+      0.8055198973042361
     ]
   ],
   "RandomForest": [

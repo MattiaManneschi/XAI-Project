@@ -1,5 +1,7 @@
 name,Accuracy,Precision,Recall,F1,ROC-AUC
 RandomForest,0.8667,0.9231,0.6316,0.75,0.896
 GreedyRuleList,0.8333,0.9091,0.5263,0.6667,0.8331
+BayesianRuleList,0.75,0.5714,0.8421,0.6809,0.8408
 RF_no_time,0.75,0.6667,0.4211,0.5161,0.7754
 GRL_no_time,0.6833,0.5,0.5789,0.5366,0.7003
+BRL_no_time,0.3167,0.3167,1.0,0.481,0.6528

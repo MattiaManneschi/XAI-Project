@@ -1,14 +1,18 @@
 {
   "GreedyRuleList": {
-    "max_depth": 2
+    "max_depth": 2,
+    "criterion": "gini",
+    "class_weight": null
   },
   "BayesianRuleList": {
-    "maxcardinality": 1
+    "maxcardinality": 3,
+    "listlengthprior": 4,
+    "minsupport": 0.2
   },
   "SkopeRules": {
     "max_depth": 2,
-    "precision_min": 0.4,
-    "recall_min": 0.2
+    "precision_min": 0.6,
+    "recall_min": 0.3
   },
   "RandomForest": {
     "n_estimators": 100,

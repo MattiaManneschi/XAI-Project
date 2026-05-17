@@ -1,5 +1,6 @@
-"""Metrics computation, result collection and all plot generation."""
+"""Metrics computation, result collection, plot generation and hyperparameter tuning."""
 
+import itertools
 import warnings
 import numpy as np
 import pandas as pd
@@ -23,6 +24,53 @@ plt.rcParams["figure.dpi"] = 150
 sns.set_theme(style="whitegrid", palette="muted")
 
 RULE_BASED_NAMES = {"RuleFit", "GreedyRuleList", "BayesianRuleList", "FIGS", "SkopeRules", "RIPPER"}
+
+
+# ── hyperparameter tuning ─────────────────────────────────────────────────────
+
+def _val_roc_auc(model, X_val, y_val) -> float:
+    try:
+        y_prob = model.predict_proba(X_val)[:, 1]
+        return float(roc_auc_score(y_val, y_prob))
+    except Exception:
+        return 0.0
+
+
+def grid_search_val(
+    builder,
+    param_grid: dict,
+    X_train, y_train,
+    X_val, y_val,
+    name: str = "",
+) -> tuple:
+    """Exhaustive grid search on validation set (maximises ROC-AUC).
+
+    Returns (best_params, best_val_roc_auc, all_scores) where all_scores is a
+    list of (params_dict, val_roc_auc) for every combination that succeeded.
+    """
+    keys = list(param_grid.keys())
+    combos = list(itertools.product(*param_grid.values()))
+    best_score, best_params = -1.0, {}
+    all_scores: list = []
+
+    print(f"  Tuning {name} ({len(combos)} combinations)...")
+    for combo in combos:
+        params = dict(zip(keys, combo))
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                m = builder(**params)
+                m.fit(X_train, y_train)
+            score = _val_roc_auc(m, X_val, y_val)
+            all_scores.append((params, score))
+            if score > best_score:
+                best_score = score
+                best_params = params
+        except Exception:
+            pass
+
+    print(f"    → best: {best_params}  val ROC-AUC={best_score:.4f}")
+    return best_params, best_score, all_scores
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -319,37 +367,40 @@ def plot_hyperparam_analysis(all_scores: dict[str, list[tuple[dict, float]]]) ->
         bar_colors = [color if k == best_val else "#cccccc" for k in keys]
         ax.bar(keys, vals, color=bar_colors, edgecolor="white", linewidth=0.8)
         ax.set_ylim(max(0, min(vals) - 0.05), min(1.0, max(vals) + 0.06))
-        ax.set_title(title, fontsize=9, fontweight="bold")
-        ax.set_xlabel(param, fontsize=8)
-        ax.set_ylabel("Val ROC-AUC", fontsize=8)
-        ax.tick_params(labelsize=8)
+        ax.set_title(title, fontsize=16, fontweight="bold")
+        ax.set_xlabel(param, fontsize=14)
+        ax.set_ylabel("Val ROC-AUC", fontsize=14)
+        ax.tick_params(labelsize=13)
         for bar, v in zip(ax.patches, vals):
             ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.005,
-                    f"{v:.3f}", ha="center", va="bottom", fontsize=7)
+                    f"{v:.3f}", ha="center", va="bottom", fontsize=13)
 
     # ── Figure 1: rule-based ──────────────────────────────────────────────────
     rb_layout = [
-        ("GreedyRuleList",   "max_depth",      "#4C72B0"),
-        ("BayesianRuleList", "maxcardinality",  "#4C72B0"),
-        ("SkopeRules",       "max_depth",       "#4C72B0"),
-        ("SkopeRules",       "precision_min",   "#4C72B0"),
-        ("SkopeRules",       "recall_min",      "#4C72B0"),
+        ("GreedyRuleList",   "max_depth",       "#4C72B0"),
+        ("GreedyRuleList",   "criterion",        "#4C72B0"),
+        ("GreedyRuleList",   "class_weight",     "#4C72B0"),
+        ("BayesianRuleList", "maxcardinality",   "#4C72B0"),
+        ("BayesianRuleList", "listlengthprior",  "#4C72B0"),
+        ("BayesianRuleList", "minsupport",       "#4C72B0"),
+        ("SkopeRules",       "max_depth",        "#4C72B0"),
+        ("SkopeRules",       "precision_min",    "#4C72B0"),
+        ("SkopeRules",       "recall_min",       "#4C72B0"),
     ]
 
     # Load best params for highlight (passed as part of all_scores metadata? no — derive)
     best_map = {name: dict(max(scores, key=lambda x: x[1])[0])
                 for name, scores in all_scores.items() if scores}
 
-    fig, axes = plt.subplots(2, 3, figsize=(12, 7))
+    fig, axes = plt.subplots(3, 3, figsize=(16, 14))
     axes = axes.flatten()
     for idx, (model, param, color) in enumerate(rb_layout):
         scores = all_scores.get(model, [])
         _barplot(axes[idx], scores, param, f"{model}\n{param}", best_map.get(model, {}), color)
-    axes[5].set_visible(False)
     plt.suptitle("Analisi iperparametri — Modelli Rule-Based\n(barre evidenziate = valore ottimale)",
-                 fontweight="bold", fontsize=11)
-    plt.tight_layout()
-    plt.savefig(PLOTS_DIR / "hyperparam_rule_based.png")
+                 fontweight="bold", fontsize=16)
+    plt.tight_layout(pad=2.5, h_pad=3.5, w_pad=2.5)
+    plt.savefig(PLOTS_DIR / "hyperparam_rule_based.png", dpi=150)
     plt.close()
     print("Saved: results/hyperparam_rule_based.png")
 
@@ -365,14 +416,14 @@ def plot_hyperparam_analysis(all_scores: dict[str, list[tuple[dict, float]]]) ->
         ("XGBoost",          "learning_rate",   "#DD8452"),
         ("XGBoost",          "max_depth",       "#DD8452"),
     ]
-    fig, axes = plt.subplots(3, 3, figsize=(12, 10))
+    fig, axes = plt.subplots(3, 3, figsize=(16, 14))
     axes = axes.flatten()
     for idx, (model, param, color) in enumerate(ens_layout):
         scores = all_scores.get(model, [])
         _barplot(axes[idx], scores, param, f"{model}\n{param}", best_map.get(model, {}), color)
     plt.suptitle("Analisi iperparametri — Modelli Ensemble\n(barre evidenziate = valore ottimale)",
-                 fontweight="bold", fontsize=11)
-    plt.tight_layout()
-    plt.savefig(PLOTS_DIR / "hyperparam_ensemble.png")
+                 fontweight="bold", fontsize=16)
+    plt.tight_layout(pad=2.5, h_pad=3.5, w_pad=2.5)
+    plt.savefig(PLOTS_DIR / "hyperparam_ensemble.png", dpi=150)
     plt.close()
     print("Saved: results/hyperparam_ensemble.png")

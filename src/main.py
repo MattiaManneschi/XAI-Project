@@ -17,10 +17,9 @@ from evaluate import (
     plot_eda, plot_metrics_comparison, plot_roc_curves,
     plot_confusion_matrices, plot_rulefit_rules,
     plot_feature_importance, run_cross_validation,
-    plot_hyperparam_analysis,
+    plot_hyperparam_analysis, grid_search_val,
 )
 from config import BINARY_FEATURES, RESULTS_DIR, FILES_DIR
-from tune import grid_search_val
 from report_latex import generate_report_latex
 
 
@@ -53,7 +52,7 @@ def main():
 
     grl_params, _, grl_scores = grid_search_val(
         lambda **kw: build_greedy_rule_list(**kw),
-        {"max_depth": [1, 2, 3, 4, 6]},
+        {"max_depth": [1, 2, 3, 4, 6], "criterion": ["gini", "entropy"], "class_weight": [None, "balanced"]},
         data.X_train, data.y_train, data.X_val, data.y_val,
         name="GreedyRuleList",
     )
@@ -61,14 +60,14 @@ def main():
     # BRL: use reduced max_iter during search to keep runtime manageable
     brl_params, _, brl_scores = grid_search_val(
         lambda **kw: build_bayesian_rule_list(max_iter=3000, **kw),
-        {"maxcardinality": [1, 2, 3]},
+        {"maxcardinality": [2, 3], "listlengthprior": [2, 3, 4], "minsupport": [0.05, 0.1, 0.2]},
         data.X_train_disc, data.y_train, data.X_val_disc, data.y_val,
         name="BayesianRuleList",
     )
 
     skope_params, _, skope_scores = grid_search_val(
         lambda **kw: build_skope_rules(**kw),
-        {"max_depth": [2, 3, 4], "precision_min": [0.4, 0.5], "recall_min": [0.2, 0.3]},
+        {"max_depth": [2, 3, 4], "precision_min": [0.5, 0.6], "recall_min": [0.3, 0.4]},
         data.X_train, data.y_train, data.X_val, data.y_val,
         name="SkopeRules",
     )
@@ -346,9 +345,9 @@ def main():
     ]
     run_cross_validation(cv_entries, data.y_trainval)
 
-    # ── 8. Ablation: RF e GRL senza feature 'time' ───────────────────────────
+    # ── 8. Ablation: RF, GRL e BRL senza feature 'time' ─────────────────────
     print("\n" + "="*60)
-    print("  ABLATION: RF e GRL senza feature 'time'")
+    print("  ABLATION: RF, GRL e BRL senza feature 'time'")
     print("="*60)
 
     X_nt = X.drop(columns=["time"])
@@ -364,24 +363,34 @@ def main():
     )
     grl_nt_params, _, _ = grid_search_val(
         lambda **kw: build_greedy_rule_list(**kw),
-        {"max_depth": [1, 2, 3, 4, 6]},
+        {"max_depth": [1, 2, 3, 4, 6], "criterion": ["gini", "entropy"], "class_weight": [None, "balanced"]},
         data_nt.X_train, data_nt.y_train, data_nt.X_val, data_nt.y_val,
         name="GRL_no_time",
     )
 
+    brl_nt_params, _, _ = grid_search_val(
+        lambda **kw: build_bayesian_rule_list(max_iter=3000, **kw),
+        {"maxcardinality": [2, 3], "listlengthprior": [2, 3, 4], "minsupport": [0.05, 0.1, 0.2]},
+        data_nt.X_train_disc, data_nt.y_train, data_nt.X_val_disc, data_nt.y_val,
+        name="BRL_no_time",
+    )
+
     rf_nt  = build_random_forest(**rf_nt_params)
     grl_nt = build_greedy_rule_list(**grl_nt_params)
+    brl_nt = build_bayesian_rule_list(**brl_nt_params)
 
     r_rf_nt  = fit_and_score(rf_nt,  data_nt.X_train.values, data_nt.y_train,
                              data_nt.X_test.values, data_nt.y_test, "RF_no_time")
     r_grl_nt = fit_and_score(grl_nt, data_nt.X_train,        data_nt.y_train,
                              data_nt.X_test,        data_nt.y_test, "GRL_no_time")
+    r_brl_nt = fit_and_score(brl_nt, data_nt.X_train_disc,   data_nt.y_train,
+                             data_nt.X_test_disc,   data_nt.y_test, "BRL_no_time")
 
     # Save ablation metrics
     abl_keys = ["Accuracy", "Precision", "Recall", "F1", "ROC-AUC"]
     with open(FILES_DIR / "ablation_no_time.csv", "w") as f:
         f.write("name," + ",".join(abl_keys) + "\n")
-        for r in [r_rf, r_grl, r_rf_nt, r_grl_nt]:
+        for r in [r_rf, r_grl, r_brl, r_rf_nt, r_grl_nt, r_brl_nt]:
             f.write(r["name"] + "," + ",".join(str(r[k]) for k in abl_keys) + "\n")
 
     # Save GRL no-time rules (same format as grl_rules.json: 5-element rows)
@@ -418,6 +427,27 @@ def main():
     grl_nt_rows.append(["DEFAULT", f"{prec_nt_def:.3f}", f"{rec_nt_def:.3f}", pred_nt_def, str(n_nt_def)])
     with open(FILES_DIR / "grl_no_time_rules.json", "w") as f:
         json.dump(grl_nt_rows, f)
+
+    # Save BRL no-time rules (same format as brl_rules.json: 3-element rows)
+    brl_nt_rows = []
+    print("\nBRL (no time) rules (decoded):")
+    for line in str(brl_nt).splitlines():
+        m = re.search(r"X_(\d+)", line)
+        if m:
+            decoded = data_nt.disc_feature_names[int(m.group(1))]
+            line = line.replace(m.group(0), decoded)
+        print(" ", line)
+        m_prob = re.search(r"probability of class 1:\s*([\d.]+)%\s*\(([\d.]+)%-([\d.]+)%\)", line)
+        if m_prob:
+            prob, lo, hi = m_prob.group(1), m_prob.group(2), m_prob.group(3)
+            if "ELSE" in line and "ELSE IF" not in line:
+                cond = "DEFAULT (nessuna regola attivata)"
+            else:
+                cond_m = re.search(r"IF\s+(.+?)\s+THEN", line)
+                cond = cond_m.group(1).replace(" > 0.5", "").strip() if cond_m else line.strip()
+            brl_nt_rows.append([cond, f"{prob}%", f"{lo}%–{hi}%"])
+    with open(FILES_DIR / "brl_no_time_rules.json", "w") as f:
+        json.dump(brl_nt_rows, f)
 
     generate_report_latex()
     print("\n✓ Pipeline completed. All outputs saved in results/ and Report/")

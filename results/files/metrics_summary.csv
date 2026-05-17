@@ -1,10 +1,10 @@
 name,Accuracy,Precision,Recall,F1,ROC-AUC,Type
-SkopeRules,0.7,1.0,0.0526,0.1,0.896,Rule-based
 RandomForest,0.8667,0.9231,0.6316,0.75,0.896,Ensemble
+SkopeRules,0.8,1.0,0.3684,0.5385,0.8601,Rule-based
 XGBoost,0.8667,0.8667,0.6842,0.7647,0.8434,Ensemble
+BayesianRuleList,0.75,0.5714,0.8421,0.6809,0.8408,Rule-based
 RuleFit,0.8,0.7692,0.5263,0.625,0.837,Rule-based
 GradientBoosting,0.75,0.6429,0.4737,0.5455,0.8344,Ensemble
 GreedyRuleList,0.8333,0.9091,0.5263,0.6667,0.8331,Rule-based
 FIGS,0.8,0.7692,0.5263,0.625,0.7677,Rule-based
-BayesianRuleList,0.8,0.7692,0.5263,0.625,0.7651,Rule-based
 RIPPER,0.7333,0.7143,0.2632,0.3846,0.6123,Rule-based
