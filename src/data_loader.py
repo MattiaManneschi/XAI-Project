@@ -38,6 +38,7 @@ class PreparedData:
     feature_names: list[str]
     disc_feature_names: list[str]   # decoded names for each discretised column
     scale_pos_weight: float         # class imbalance weight for XGBoost
+    discretiser: KBinsDiscretizer   # fitted discretiser (for PDP wrapper on BRL)
 
 
 def load_dataset() -> tuple[pd.DataFrame, pd.Series]:
@@ -129,4 +130,5 @@ def prepare(X: pd.DataFrame, y: pd.Series) -> PreparedData:
         feature_names=list(X.columns),
         disc_feature_names=disc_feature_names,
         scale_pos_weight=scale_pos_weight,
+        discretiser=discretiser,
     )

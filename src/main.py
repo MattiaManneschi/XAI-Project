@@ -17,7 +17,7 @@ from evaluate import (
     plot_eda, plot_metrics_comparison, plot_roc_curves,
     plot_confusion_matrices, plot_rulefit_rules,
     plot_feature_importance, run_cross_validation,
-    plot_hyperparam_analysis, grid_search_val,
+    plot_hyperparam_analysis, grid_search_val, plot_pdp_ice,
 )
 from config import BINARY_FEATURES, RESULTS_DIR, FILES_DIR
 from report_latex import generate_report_latex
@@ -327,6 +327,7 @@ def main():
     plot_rulefit_rules(rulefit)
     plot_feature_importance(rf, data.feature_names)
     plot_hyperparam_analysis(all_hyperparam_scores)
+    plot_pdp_ice(rf, gb, xgb, data)
 
     # ── 7. Cross-validation (on trainval to maximise data) ────────────────────
     # RuleFit needs scaled features — scale X_trainval with the same scaler

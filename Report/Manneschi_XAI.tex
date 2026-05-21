@@ -92,9 +92,10 @@ e spiegazioni fuorvianti.
 \textbf{Struttura del report.}
 Il Capitolo~1 introduce il problema clinico, descrive il dataset e presenta l'analisi esplorativa.
 Il Capitolo~2 descrive la metodologia: pipeline di elaborazione dei dati, modelli utilizzati e
-selezione degli iperparametri. Il Capitolo~3 presenta i risultati e il confronto delle
-performance. Il Capitolo~4 raccoglie le conclusioni, l'analisi delle feature e il confronto
-clinico dei risultati.
+selezione degli iperparametri. Il Capitolo~3 presenta i risultati: metriche comparative, curve
+ROC, matrici di confusione, regole apprese, cross-validation, esperimento di ablazione della
+feature \texttt{time}, analisi delle feature (importance globale) e Partial Dependence Plots
+con ICE. Il Capitolo~4 raccoglie le conclusioni e le considerazioni cliniche.
 
 \subsection{Il Dataset}
 
@@ -447,9 +448,10 @@ modelli, dimostrando che la complessità strutturale non implica migliore capaci
 
 La curva ROC traccia il TPR (Recall) contro il FPR al variare della soglia; l'AUC riassume
 la performance in un unico numero indipendente dalla soglia (0.50\,=\,casuale, 1.0\,=\,perfetto).
-Random Forest raggiunge l'AUC più alto tra tutti i modelli. SkopeRules e GreedyRuleList mostrano
-risultati notevoli per modelli intrinsecamente interpretabili. RIPPER ha l'AUC più basso: nonostante
-F1 e Accuracy competitivi, il ranking probabilistico è meno calibrato.
+Random Forest raggiunge l'AUC più alto tra tutti i modelli. SkopeRules è il miglior rule-based
+in AUC (0.860), competitivo con i tre ensemble. RIPPER ha l'AUC più basso e anche F1 e Accuracy
+ridotti: la maggiore espressività strutturale delle sue regole congiuntive non si traduce in
+migliore capacità discriminativa su questo dataset.
 
 \clearpage
 \subsection{Matrici di Confusione}
@@ -593,8 +595,10 @@ time <= 78.5 and serum\_creatinine > 0.75 & 0.820 & 0.707 \\
 \smallskip\noindent\textit{(mostrate le prime 15 su 37 regole apprese, ordinate per precisione decrescente)}
 
 \textbf{FIGS --- Fast Interpretable Greedy-Tree Sums.}
-FIGS è una somma di alberi: ogni albero assegna al campione un valore numerico e se la somma
-supera 0.5 la predizione è Decesso. Di seguito la struttura completa degli alberi appresi:
+FIGS è una somma di alberi: ogni albero produce una coppia di valori (uno per classe), le
+coppie vengono sommate elemento per elemento e una softmax sui due valori risultanti
+fornisce le probabilità finali; la classe con probabilità maggiore è la predizione. Di seguito
+la struttura completa degli alberi appresi:
 
 \medskip
 \begin{small}
@@ -725,6 +729,125 @@ DEFAULT (nessuna regola attivata) & 16.2\% & 10.0\%--23.6\% \\
 \end{tabular}}}
 \end{center}
 
+\clearpage
+\subsection{Analisi delle Feature}
+
+\textbf{Regole RuleFit --- coefficienti Lasso.}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/rulefit_rules.png}
+\end{figure}
+
+Coefficienti Lasso delle regole estratte da RuleFit: positivo (barre rosse) $\Rightarrow$ la
+regola aumenta il rischio di decesso; negativo (blu) $\Rightarrow$ lo riduce. Le regole
+pro-decesso con peso più alto coinvolgono \texttt{time} basso e \texttt{serum\_creatinine}
+alta. Le regole pro-sopravvivenza implicano \texttt{ejection\_fraction} più alta e follow-up
+lungo. La penalizzazione Lasso azzera i coefficienti ridondanti, mantenendo solo le regole con
+effetto reale sulla predizione.
+
+\textbf{Feature Importance --- Random Forest (MDI).}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/feature_importance_rf.png}
+\end{figure}
+
+L'importanza MDI misura di quanto ogni feature riduce l'impurità media negli alberi del Random
+Forest (n\_estimators=100): \texttt{time} domina nettamente, seguita da \texttt{serum\_creatinine} ed
+\texttt{ejection\_fraction}. Questa gerarchia è confermata in modo indipendente da RuleFit
+(sezione~3.4): le regole con coefficiente Lasso più alto coinvolgono \texttt{time} basso e
+\texttt{serum\_creatinine} alta. Due metodi radicalmente diversi --- importance da ensemble di
+alberi vs regressione Lasso su regole estratte --- convergono sugli stessi tre segnali
+fisiopatologici, coerenti con la letteratura sull'insufficienza cardiaca.
+
+\subsection{Partial Dependence Plots e ICE}
+
+I Partial Dependence Plot (PDP) e le Individual Conditional Expectation (ICE) sono strumenti
+post-hoc per visualizzare l'effetto marginale di una feature sulla predizione, mantenendo le
+altre feature ai loro valori osservati (marginalizzazione).
+
+\textbf{Motivazione: perché sui modelli ensemble.}
+PDP e ICE sono strumenti nati per spiegare modelli black-box: la loro utilità è massima sui
+modelli ensemble (RF, GradientBoosting, XGBoost) la cui logica interna non è direttamente
+ispezionabile. Per i modelli rule-based (RuleFit, GRL, BRL, FIGS, SkopeRules, RIPPER) le regole
+apprese (o i coefficienti Lasso nel caso di RuleFit) sono già la spiegazione completa del
+comportamento del modello, quindi un PDP sarebbe ridondante.
+L'analisi che segue si concentra dunque sui tre ensemble, verificando se modelli con bias
+induttivi diversi (bagging vs boosting) apprendono pattern simili.
+
+\textbf{PDP 1D + ICE --- tre feature principali.}
+Ogni cella mostra la curva PDP media (linea colorata) sovrapposta alle curve ICE individuali
+(grigio, 50 campioni). Le tre feature analizzate --- \texttt{time},
+\texttt{serum\_creatinine} ed \texttt{ejection\_fraction} --- sono le più informative
+secondo la feature importance MDI. I tre modelli confrontati sono Random Forest (arancio),
+Gradient Boosting (blu) e XGBoost (verde).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/pdp_ice_1d.png}
+\end{figure}
+
+\textbf{Lettura dei risultati.}
+Tutti e tre gli ensemble apprendono pattern coerenti: \texttt{time} ha relazione
+fortemente decrescente con soglia critica intorno a 70--80 giorni; \texttt{serum\_creatinine}
+ha effetto crescente (alta creatinina = alto rischio renale); \texttt{ejection\_fraction}
+ha effetto decrescente. La convergenza su questi pattern --- nonostante RF usi bagging e
+GB/XGBoost usino boosting --- è una validazione qualitativa robusta: i tre modelli, partendo
+da bias induttivi diversi, identificano le stesse relazioni fisiopatologiche.
+
+\textbf{Differenze qualitative tra i modelli.}
+RF produce curve più lisce e monotone, conseguenza del bagging che media molte predizioni
+indipendenti. Gradient Boosting e XGBoost, costruendo alberi sequenzialmente sui residui,
+mostrano transizioni più nette e talvolta non-monotonie locali (es.\ piccoli rimbalzi su
+\texttt{time} attorno a 150--180 giorni), riflettendo la maggiore capacità del boosting di
+modellare pattern fine. Le curve ICE rivelano che per \texttt{time} la maggior parte dei
+campioni segue il trend medio (eterogeneità contenuta), mentre per \texttt{serum\_creatinine}
+alcune ICE divergono in particolare nei modelli boosting --- segnale di interazioni con altre
+feature catturate dal modello.
+
+\bigskip
+\textbf{PDP 2D --- interazione \texttt{time} $\times$ \texttt{serum\_creatinine}.}
+Il PDP bidimensionale mostra la probabilità di decesso media in funzione congiunta di
+\texttt{time} e \texttt{serum\_creatinine}, marginalizzando sulle restanti feature.
+Non esiste un analogo ICE per il caso 2D (richiederebbe una superficie per ogni campione).
+
+\textbf{Motivazione della scelta della coppia.}
+La coppia \texttt{time} $\times$ \texttt{serum\_creatinine} è stata selezionata in base
+a due criteri: (i)~sono le due feature più informative secondo la feature importance MDI,
+con \texttt{serum\_creatinine} che ha la correlazione più alta con \texttt{DEATH\_EVENT}
+tra le feature biochimiche (+0.29, contro $-$0.27 di \texttt{ejection\_fraction});
+(ii)~compaiono congiuntamente nella maggior parte delle SkopeRules apprese
+(es.\ \texttt{time <= 73.5 AND serum\_creatinine > 0.85}) e nelle regole RuleFit con
+coefficiente Lasso più alto --- segnale che il modello stesso le considera interagenti, e
+quindi la coppia più candidata a esibire una vera interazione non-additiva.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/pdp_2d.png}
+\end{figure}
+
+\textbf{Lettura dei risultati.}
+L'angolo in alto a sinistra (follow-up breve e creatinina alta) corrisponde al massimo rischio
+in tutti e tre i modelli (P(decesso) $\approx$ 0.6--0.88). L'angolo in basso a destra
+(follow-up lungo e creatinina bassa) corrisponde alla minima probabilità di decesso
+(P(decesso) $\approx$ 0.14--0.22). La regione di transizione è governata principalmente da
+\texttt{time}: la soglia critica appare intorno a 70--80 giorni in modo abbastanza
+indipendente dal valore di \texttt{serum\_creatinine}, coerente con la dominanza di
+\texttt{time} osservata nella feature importance.
+
+\textbf{Confronto tra modelli.}
+Random Forest mostra curve di livello smooth e prevalentemente verticali: l'effetto dominante
+è \texttt{time}, con \texttt{serum\_creatinine} che modula gradualmente il rischio
+soprattutto a follow-up brevi. Gradient Boosting evidenzia un pattern più complesso, con
+"isole" di rischio elevato (P $\approx$ 0.88) e regioni di basso rischio anche per follow-up
+intermedi: il boosting cattura una vera non-additività tra le due feature. XGBoost si colloca
+tra i due, con transizioni nette ma più frammentate rispetto a RF.
+La convergenza qualitativa dei tre modelli (gradiente diagonale dall'angolo alto-sinistro a
+quello basso-destro) conferma che la struttura del rischio è solida; le differenze locali
+riflettono il bias induttivo di ciascun algoritmo: bagging $\rightarrow$ smoothing, boosting
+$\rightarrow$ pattern fine.
+
 
 
 \section{Conclusioni}
@@ -733,10 +856,11 @@ DEFAULT (nessuna regola attivata) & 16.2\% & 10.0\%--23.6\% \\
 I modelli ensemble raggiungono ROC-AUC superiore (Random Forest 0.896, XGBoost 0.843)
 ma il divario con i rule-based non è netto: GreedyRuleList (0.833) è competitivo su un
 dataset di soli 299 campioni, dove la semplicità strutturale riduce il rischio di overfitting.
-GreedyRuleList offre il miglior F1 rule-based (0.667) con una lista ordinata di condizioni
-leggibile da un clinico. RuleFit assegna coefficienti espliciti a ogni regola, rendendo visibile
-il peso relativo di ciascuna. BayesianRuleList produce stime probabilistiche con IC al 95\%, utili
-per comunicare l'incertezza al clinico. FIGS ha struttura additiva
+BayesianRuleList ottiene il miglior F1 tra i rule-based (0.681) e produce stime
+probabilistiche con IC al 95\%, utili per comunicare l'incertezza al clinico.
+GreedyRuleList offre il secondo F1 rule-based (0.667) con una lista ordinata di condizioni
+particolarmente leggibile da un clinico. RuleFit assegna coefficienti espliciti a ogni regola,
+rendendo visibile il peso relativo di ciascuna. FIGS ha struttura additiva
 particolarmente trasparente. SkopeRules raggiunge Precision=1.0 con Recall molto basso: non
 produce mai falsi positivi, ma identifica solo una piccola frazione dei deceduti --- utile quando
 ogni allarme deve corrispondere a un caso critico. RIPPER apprende regole congiuntive (AND tra più condizioni) in modo incrementale con potatura:
@@ -744,19 +868,6 @@ nonostante la maggiore espressività strutturale rispetto a GRL, ottiene il ROC-
 di tutti i modelli. Il vantaggio strutturale non si traduce in migliore capacità discriminativa
 su questo dataset.
 
-\medskip
-\begin{center}
-{\small\begin{tabular}{>{\raggedright\arraybackslash}p{0.3020\linewidth}>{\raggedright\arraybackslash}p{0.1954\linewidth}>{\raggedright\arraybackslash}p{0.1954\linewidth}>{\raggedright\arraybackslash}p{0.1954\linewidth}}
-\toprule
-\cellcolor{tblhdr}\color{white}\bfseries Modello & \cellcolor{tblhdr}\color{white}\bfseries Categoria & \cellcolor{tblhdr}\color{white}\bfseries ROC-AUC & \cellcolor{tblhdr}\color{white}\bfseries F1 \\
-\midrule
-SkopeRules & Rule-based & 0.8601 & 0.5385 \\
-\rowcolor{ltrow}RandomForest & Ensemble & 0.8960 & 0.7500 \\
-\bottomrule
-\end{tabular}}}
-\end{center}
-
-\medskip
 \textbf{Tuning degli iperparametri.}
 La selezione sul validation set ha mostrato che per BayesianRuleList la cardinalità ottimale è
 3 (sebbene in pratica il MCMC converga su regole a condizione singola, come discusso
@@ -786,37 +897,12 @@ Come mostrato nella sezione~3.6, rimuovendo \texttt{time} il ROC-AUC scende per 
 i modelli, confermando il suo peso dominante. RF e GRL rimangono utilizzabili in triage;
 BRL degrada significativamente, evidenziando una maggiore dipendenza dal segnale di follow-up.
 
-\clearpage
-\subsection{Analisi delle Feature}
-
-\textbf{Regole RuleFit --- coefficienti Lasso.}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{figures/rulefit_rules.png}
-\end{figure}
-
-Coefficienti Lasso delle regole estratte da RuleFit: positivo (barre rosse) $\Rightarrow$ la
-regola aumenta il rischio di decesso; negativo (blu) $\Rightarrow$ lo riduce. Le regole
-pro-decesso con peso più alto coinvolgono \texttt{time} basso e \texttt{serum\_creatinine}
-alta. Le regole pro-sopravvivenza implicano \texttt{ejection\_fraction} più alta e follow-up
-lungo. La penalizzazione Lasso azzera i coefficienti ridondanti, mantenendo solo le regole con
-effetto reale sulla predizione.
-
-\clearpage
-\textbf{Feature Importance --- Random Forest (MDI).}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{figures/feature_importance_rf.png}
-\end{figure}
-
-L'importanza MDI misura di quanto ogni feature riduce l'impurità media negli alberi del Random
-Forest (n\_estimators=100): \texttt{time} domina nettamente, seguita da \texttt{serum\_creatinine} ed
-\texttt{ejection\_fraction}. Questa gerarchia è confermata in modo indipendente da RuleFit
-(sezione~3.4): le regole con coefficiente Lasso più alto coinvolgono \texttt{time} basso e
-\texttt{serum\_creatinine} alta. Due metodi radicalmente diversi --- importance da ensemble di
-alberi vs regressione Lasso su regole estratte --- convergono sugli stessi tre segnali
-fisiopatologici, coerenti con la letteratura sull'insufficienza cardiaca.
+\textbf{Sintesi finale.}
+L'analisi delle feature (sezione~3.7) e i Partial Dependence Plots (sezione~3.8) hanno
+mostrato che metodi radicalmente diversi --- feature importance MDI, coefficienti Lasso su
+regole e PDP/ICE sugli ensemble --- convergono sugli stessi tre segnali clinici dominanti:
+\texttt{time}, \texttt{serum\_creatinine} ed \texttt{ejection\_fraction}. Questa
+convergenza, unita alla coerenza con la letteratura sull'insufficienza cardiaca, è il
+risultato più solido del progetto.
 
 \end{document}

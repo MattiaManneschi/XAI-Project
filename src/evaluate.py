@@ -337,6 +337,93 @@ def run_cross_validation(cv_entries: list[dict], y_train: np.ndarray) -> None:
     print("Saved: results/cross_validation.png")
 
 
+def plot_pdp_ice(rf_model, gb_model, xgb_model, data) -> None:
+    """PDP + ICE (1D) and 2D PDP for the three ensemble black-box models."""
+    from sklearn.inspection import PartialDependenceDisplay
+
+    fn = list(data.feature_names)
+    feats_1d   = ["time", "serum_creatinine", "ejection_fraction"]
+    feat_2d    = ("time", "serum_creatinine")
+    idx_1d     = [fn.index(f) for f in feats_1d]
+    idx_2d     = (fn.index(feat_2d[0]), fn.index(feat_2d[1]))
+    X_tr       = data.X_train.astype(float)   # float needed for PDP grid variation
+
+    from sklearn.base import ClassifierMixin, BaseEstimator
+
+    class _PDPWrapper(ClassifierMixin, BaseEstimator):
+        """Thin sklearn-compatible wrapper for PDP/ICE compatibility."""
+        def __init__(self, model, n_features):
+            self.model       = model
+            self.classes_    = np.array([0, 1])
+            self.n_features_in_ = n_features
+        def fit(self, X, y=None):
+            return self
+        def predict_proba(self, X):
+            arr = X.values if isinstance(X, pd.DataFrame) else np.asarray(X)
+            return self.model.predict_proba(arr)
+
+    nf = len(data.feature_names)
+    models_info = [
+        ("Random Forest",     _PDPWrapper(rf_model,  nf), "#DD8452"),
+        ("Gradient Boosting", _PDPWrapper(gb_model,  nf), "#4C72B0"),
+        ("XGBoost",           _PDPWrapper(xgb_model, nf), "#55A868"),
+    ]
+
+    # ── Figure 1: 1D PDP + ICE (3 features × 3 models) ───────────────────────
+    fig, axes = plt.subplots(3, 3, figsize=(15, 12))
+    for col, (mname, model, color) in enumerate(models_info):
+        for row, (feat, fidx) in enumerate(zip(feats_1d, idx_1d)):
+            ax = axes[row][col]
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                disp = PartialDependenceDisplay.from_estimator(
+                    model, X_tr, features=[fidx],
+                    feature_names=fn,
+                    kind="both",
+                    subsample=50,
+                    random_state=RANDOM_STATE,
+                    ax=ax,
+                    line_kw={"color": color, "lw": 2.5, "label": "PDP"},
+                    ice_lines_kw={"color": "gray", "alpha": 0.12, "lw": 0.6},
+                )
+            ax.set_title(f"{mname}\n{feat}", fontsize=9, fontweight="bold")
+            ax.set_xlabel(feat, fontsize=8)
+            ax.set_ylabel("P(decesso)" if col == 0 else "", fontsize=8)
+    plt.suptitle(
+        "Partial Dependence Plots + ICE — RF, GradientBoosting, XGBoost\n"
+        "(linea colorata = PDP medio, grigio = curve ICE individuali)",
+        fontweight="bold", fontsize=12,
+    )
+    plt.tight_layout(pad=2.0, h_pad=3.0, w_pad=2.5)
+    plt.savefig(PLOTS_DIR / "pdp_ice_1d.png", dpi=150)
+    plt.close()
+
+    # ── Figure 2: 2D PDP (time × serum_creatinine) ───────────────────────────
+    fig, axes = plt.subplots(1, 3, figsize=(18, 7.5))
+    for col, (mname, model, _) in enumerate(models_info):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            PartialDependenceDisplay.from_estimator(
+                model, X_tr, features=[idx_2d],
+                feature_names=fn,
+                kind="average",
+                ax=axes[col],
+            )
+        axes[col].set_title(
+            f"{mname}\n{feat_2d[0]} × {feat_2d[1]}",
+            fontsize=10, fontweight="bold",
+        )
+    plt.suptitle(
+        "2D Partial Dependence Plot — time × serum_creatinine\n"
+        "(colore = P(decesso) media, marginalizzata sulle altre feature)",
+        fontweight="bold", fontsize=12,
+    )
+    plt.tight_layout(pad=2.0)
+    plt.savefig(PLOTS_DIR / "pdp_2d.png", dpi=150)
+    plt.close()
+    print("Saved: results/pdp_ice_1d.png, results/pdp_2d.png")
+
+
 def plot_hyperparam_analysis(all_scores: dict[str, list[tuple[dict, float]]]) -> None:
     """Two figures: rule-based models and ensemble models.
 
