@@ -330,11 +330,11 @@ def _ch2(best: dict) -> str:
         ["Modulo", "Responsabilita'"],
         [
             ["config.py",         "Centralizza iperparametri, path e costanti"],
-            ["data\\_loader.py",  "Download UCI, cache CSV, split stratificato 60/20/20, tre varianti di preprocessing"],
-            ["models.py",         "Factory function per ciascuno dei 9 modelli; accetta **params per override"],
-            ["evaluate.py",       "Calcolo metriche, grafici, cross-validation e grid search sul validation set (ROC-AUC)"],
-            ["main.py",           "Orchestrazione dell'intera pipeline end-to-end"],
-            ["report\\_latex.py", "Legge gli artefatti salvati e genera il report LaTeX/PDF"],
+            ["data_loader.py",  "Download UCI, cache CSV, split stratificato 60/20/20, tre varianti di preprocessing"],
+            ["models.py",       "Factory function per ciascuno dei 9 modelli; accetta **params per override"],
+            ["evaluate.py",     "Calcolo metriche, grafici, cross-validation e grid search sul validation set (ROC-AUC)"],
+            ["main.py",         "Orchestrazione dell'intera pipeline end-to-end"],
+            ["report_latex.py", "Legge gli artefatti salvati e genera il report LaTeX/PDF"],
         ],
         [0.22, 0.78],
     )
@@ -347,24 +347,24 @@ def _ch2(best: dict) -> str:
         return "None" if v is None else str(v)
 
     grid_rows = [
-        ["GreedyRuleList",   "max\\_depth",         "1, 2, 3, 4, 6",        _bval("GreedyRuleList",   "max_depth")],
-        ["GreedyRuleList",   "criterion",            "gini, entropy",        _bval("GreedyRuleList",   "criterion")],
-        ["GreedyRuleList",   "class\\_weight",       "None, balanced",       _bval("GreedyRuleList",   "class_weight")],
-        ["BayesianRuleList", "maxcardinality",       "2, 3",                 _bval("BayesianRuleList", "maxcardinality")],
-        ["BayesianRuleList", "listlengthprior",      "2, 3, 4",              _bval("BayesianRuleList", "listlengthprior")],
-        ["BayesianRuleList", "minsupport",           "0.05, 0.1, 0.2",       _bval("BayesianRuleList", "minsupport")],
-        ["SkopeRules",       "max\\_depth",          "2, 3, 4",              _bval("SkopeRules",       "max_depth")],
-        ["SkopeRules",       "precision\\_min",      "0.5, 0.6",        _bval("SkopeRules",       "precision_min")],
-        ["SkopeRules",       "recall\\_min",         "0.3, 0.4",        _bval("SkopeRules",       "recall_min")],
-        ["RandomForest",     "n\\_estimators",       "100, 200",        _bval("RandomForest",     "n_estimators")],
-        ["RandomForest",     "max\\_depth",          "None, 5, 10",     _bval("RandomForest",     "max_depth")],
-        ["RandomForest",     "min\\_samples\\_leaf", "1, 2, 5",         _bval("RandomForest",     "min_samples_leaf")],
-        ["GradientBoosting", "n\\_estimators",       "100, 200",        _bval("GradientBoosting", "n_estimators")],
-        ["GradientBoosting", "learning\\_rate",      "0.05, 0.1",       _bval("GradientBoosting", "learning_rate")],
-        ["GradientBoosting", "max\\_depth",          "3, 4, 5",         _bval("GradientBoosting", "max_depth")],
-        ["XGBoost",          "n\\_estimators",       "100, 200",        _bval("XGBoost",          "n_estimators")],
-        ["XGBoost",          "learning\\_rate",      "0.05, 0.1",       _bval("XGBoost",          "learning_rate")],
-        ["XGBoost",          "max\\_depth",          "3, 4, 5",         _bval("XGBoost",          "max_depth")],
+        ["GreedyRuleList",   "max_depth",          "1, 2, 3, 4, 6",        _bval("GreedyRuleList",   "max_depth")],
+        ["GreedyRuleList",   "criterion",           "gini, entropy",        _bval("GreedyRuleList",   "criterion")],
+        ["GreedyRuleList",   "class_weight",        "None, balanced",       _bval("GreedyRuleList",   "class_weight")],
+        ["BayesianRuleList", "maxcardinality",      "2, 3",                 _bval("BayesianRuleList", "maxcardinality")],
+        ["BayesianRuleList", "listlengthprior",     "2, 3, 4",              _bval("BayesianRuleList", "listlengthprior")],
+        ["BayesianRuleList", "minsupport",          "0.05, 0.1, 0.2",       _bval("BayesianRuleList", "minsupport")],
+        ["SkopeRules",       "max_depth",           "2, 3, 4",              _bval("SkopeRules",       "max_depth")],
+        ["SkopeRules",       "precision_min",       "0.5, 0.6",             _bval("SkopeRules",       "precision_min")],
+        ["SkopeRules",       "recall_min",          "0.3, 0.4",             _bval("SkopeRules",       "recall_min")],
+        ["RandomForest",     "n_estimators",        "100, 200",             _bval("RandomForest",     "n_estimators")],
+        ["RandomForest",     "max_depth",           "None, 5, 10",          _bval("RandomForest",     "max_depth")],
+        ["RandomForest",     "min_samples_leaf",    "1, 2, 5",              _bval("RandomForest",     "min_samples_leaf")],
+        ["GradientBoosting", "n_estimators",        "100, 200",             _bval("GradientBoosting", "n_estimators")],
+        ["GradientBoosting", "learning_rate",       "0.05, 0.1",            _bval("GradientBoosting", "learning_rate")],
+        ["GradientBoosting", "max_depth",           "3, 4, 5",              _bval("GradientBoosting", "max_depth")],
+        ["XGBoost",          "n_estimators",        "100, 200",             _bval("XGBoost",          "n_estimators")],
+        ["XGBoost",          "learning_rate",       "0.05, 0.1",            _bval("XGBoost",          "learning_rate")],
+        ["XGBoost",          "max_depth",           "3, 4, 5",              _bval("XGBoost",          "max_depth")],
     ]
     grid_tbl = _tbl(
         ["Modello", "Parametro", "Valori esplorati", "Ottimo (val)"],
@@ -375,13 +375,13 @@ def _ch2(best: dict) -> str:
     fixed_tbl = _tbl(
         ["Parametro", "Valore", "Motivazione"],
         [
-            ["RANDOM\\_STATE",     "42",      "Seed fisso per riproducibilita'"],
-            ["TEST\\_SIZE",        "0.20",    "20\\% test ($\\approx$60 campioni), mantenuto separato durante il tuning"],
-            ["VAL\\_SIZE",         "0.20",    "20\\% validation ($\\approx$60 campioni) per la scelta degli iperparametri"],
-            ["CV\\_FOLDS",         "10",      "10-fold CV su trainval ($\\approx$240 campioni): stima robusta della stabilita'"],
-            ["BRL\\_MAX\\_ITER",   "20\\,000","Iterazioni MCMC per la convergenza (ridotto a 3\\,000 durante il tuning)"],
-            ["RULEFIT\\_MAX\\_RULES","30",    "Limita le regole candidate; troppe degenerano in black-box"],
-            ["FIGS\\_MAX\\_RULES", "10",      "Alberi nella somma FIGS; oltre 10 si perde interpretabilita'"],
+            ["RANDOM_STATE",      "42",              "Seed fisso per riproducibilita'"],
+            ["TEST_SIZE",         "0.20",            _Raw(r"20\% test ($\approx$60 campioni), mantenuto separato durante il tuning")],
+            ["VAL_SIZE",          "0.20",            _Raw(r"20\% validation ($\approx$60 campioni) per la scelta degli iperparametri")],
+            ["CV_FOLDS",          "10",              _Raw(r"10-fold CV su trainval ($\approx$240 campioni): stima robusta della stabilita'")],
+            ["BRL_MAX_ITER",      _Raw(r"20\,000"),  _Raw(r"Iterazioni MCMC per la convergenza (ridotto a 3\,000 durante il tuning)")],
+            ["RULEFIT_MAX_RULES", "30",              "Limita le regole candidate; troppe degenerano in black-box"],
+            ["FIGS_MAX_RULES",    "10",              "Alberi nella somma FIGS; oltre 10 si perde interpretabilita'"],
         ],
         [0.26, 0.10, 0.64],
     )
@@ -613,7 +613,7 @@ def _ch3(
         [0.38, 0.12, 0.12, 0.22, 0.16],
     )
     brl_tbl = _tbl(
-        ["Condizione", "P(decesso)", "IC 95\\%"],
+        ["Condizione", "P(decesso)", "IC 95%"],
         brl_rows or [["---", "---", "---"]],
         [0.58, 0.20, 0.22],
     )
@@ -666,7 +666,7 @@ def _ch3(
         abl_rows_tbl = []
         for key in ["RandomForest", "RF_no_time", "GreedyRuleList", "GRL_no_time",
                     "BayesianRuleList", "BRL_no_time"]:
-            lbl = key.replace("_", "\\_")
+            lbl = key
             if key in abl_index.index:
                 r = abl_index.loc[key]
                 abl_rows_tbl.append([
@@ -688,7 +688,7 @@ def _ch3(
         [0.38, 0.12, 0.12, 0.22, 0.16],
     )
     brl_nt_tbl = _tbl(
-        ["Condizione", "P(decesso)", "IC 95\\%"],
+        ["Condizione", "P(decesso)", "IC 95%"],
         brl_nt_rows or [["---", "---", "---"]],
         [0.58, 0.20, 0.22],
     )

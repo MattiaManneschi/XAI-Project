@@ -180,11 +180,11 @@ toccare le altre e rende il codice più leggibile e testabile.
 \cellcolor{tblhdr}\color{white}\bfseries Modulo & \cellcolor{tblhdr}\color{white}\bfseries Responsabilita' \\
 \midrule
 config.py & Centralizza iperparametri, path e costanti \\
-\rowcolor{ltrow}data\textbackslash{}\_loader.py & Download UCI, cache CSV, split stratificato 60/20/20, tre varianti di preprocessing \\
+\rowcolor{ltrow}data\_loader.py & Download UCI, cache CSV, split stratificato 60/20/20, tre varianti di preprocessing \\
 models.py & Factory function per ciascuno dei 9 modelli; accetta **params per override \\
 \rowcolor{ltrow}evaluate.py & Calcolo metriche, grafici, cross-validation e grid search sul validation set (ROC-AUC) \\
 main.py & Orchestrazione dell'intera pipeline end-to-end \\
-\rowcolor{ltrow}report\textbackslash{}\_latex.py & Legge gli artefatti salvati e genera il report LaTeX/PDF \\
+\rowcolor{ltrow}report\_latex.py & Legge gli artefatti salvati e genera il report LaTeX/PDF \\
 \bottomrule
 \end{tabular}}}
 \end{center}
@@ -311,24 +311,24 @@ processo di selezione.
 \toprule
 \cellcolor{tblhdr}\color{white}\bfseries Modello & \cellcolor{tblhdr}\color{white}\bfseries Parametro & \cellcolor{tblhdr}\color{white}\bfseries Valori esplorati & \cellcolor{tblhdr}\color{white}\bfseries Ottimo (val) \\
 \midrule
-GreedyRuleList & max\textbackslash{}\_depth & 1, 2, 3, 4, 6 & 2 \\
+GreedyRuleList & max\_depth & 1, 2, 3, 4, 6 & 2 \\
 \rowcolor{ltrow}GreedyRuleList & criterion & gini, entropy & gini \\
-GreedyRuleList & class\textbackslash{}\_weight & None, balanced & None \\
+GreedyRuleList & class\_weight & None, balanced & None \\
 \rowcolor{ltrow}BayesianRuleList & maxcardinality & 2, 3 & 3 \\
 BayesianRuleList & listlengthprior & 2, 3, 4 & 4 \\
 \rowcolor{ltrow}BayesianRuleList & minsupport & 0.05, 0.1, 0.2 & 0.2 \\
-SkopeRules & max\textbackslash{}\_depth & 2, 3, 4 & 2 \\
-\rowcolor{ltrow}SkopeRules & precision\textbackslash{}\_min & 0.5, 0.6 & 0.6 \\
-SkopeRules & recall\textbackslash{}\_min & 0.3, 0.4 & 0.3 \\
-\rowcolor{ltrow}RandomForest & n\textbackslash{}\_estimators & 100, 200 & 100 \\
-RandomForest & max\textbackslash{}\_depth & None, 5, 10 & None \\
-\rowcolor{ltrow}RandomForest & min\textbackslash{}\_samples\textbackslash{}\_leaf & 1, 2, 5 & 5 \\
-GradientBoosting & n\textbackslash{}\_estimators & 100, 200 & 100 \\
-\rowcolor{ltrow}GradientBoosting & learning\textbackslash{}\_rate & 0.05, 0.1 & 0.1 \\
-GradientBoosting & max\textbackslash{}\_depth & 3, 4, 5 & 3 \\
-\rowcolor{ltrow}XGBoost & n\textbackslash{}\_estimators & 100, 200 & 100 \\
-XGBoost & learning\textbackslash{}\_rate & 0.05, 0.1 & 0.05 \\
-\rowcolor{ltrow}XGBoost & max\textbackslash{}\_depth & 3, 4, 5 & 4 \\
+SkopeRules & max\_depth & 2, 3, 4 & 2 \\
+\rowcolor{ltrow}SkopeRules & precision\_min & 0.5, 0.6 & 0.6 \\
+SkopeRules & recall\_min & 0.3, 0.4 & 0.3 \\
+\rowcolor{ltrow}RandomForest & n\_estimators & 100, 200 & 100 \\
+RandomForest & max\_depth & None, 5, 10 & None \\
+\rowcolor{ltrow}RandomForest & min\_samples\_leaf & 1, 2, 5 & 5 \\
+GradientBoosting & n\_estimators & 100, 200 & 100 \\
+\rowcolor{ltrow}GradientBoosting & learning\_rate & 0.05, 0.1 & 0.1 \\
+GradientBoosting & max\_depth & 3, 4, 5 & 3 \\
+\rowcolor{ltrow}XGBoost & n\_estimators & 100, 200 & 100 \\
+XGBoost & learning\_rate & 0.05, 0.1 & 0.05 \\
+\rowcolor{ltrow}XGBoost & max\_depth & 3, 4, 5 & 4 \\
 \bottomrule
 \end{tabular}}}
 \end{center}
@@ -344,13 +344,13 @@ XGBoost & learning\textbackslash{}\_rate & 0.05, 0.1 & 0.05 \\
 \toprule
 \cellcolor{tblhdr}\color{white}\bfseries Parametro & \cellcolor{tblhdr}\color{white}\bfseries Valore & \cellcolor{tblhdr}\color{white}\bfseries Motivazione \\
 \midrule
-RANDOM\textbackslash{}\_STATE & 42 & Seed fisso per riproducibilita' \\
-\rowcolor{ltrow}TEST\textbackslash{}\_SIZE & 0.20 & 20\textbackslash{}\% test (\$\textbackslash{}approx\$60 campioni), mantenuto separato durante il tuning \\
-VAL\textbackslash{}\_SIZE & 0.20 & 20\textbackslash{}\% validation (\$\textbackslash{}approx\$60 campioni) per la scelta degli iperparametri \\
-\rowcolor{ltrow}CV\textbackslash{}\_FOLDS & 10 & 10-fold CV su trainval (\$\textbackslash{}approx\$240 campioni): stima robusta della stabilita' \\
-BRL\textbackslash{}\_MAX\textbackslash{}\_ITER & 20\textbackslash{},000 & Iterazioni MCMC per la convergenza (ridotto a 3\textbackslash{},000 durante il tuning) \\
-\rowcolor{ltrow}RULEFIT\textbackslash{}\_MAX\textbackslash{}\_RULES & 30 & Limita le regole candidate; troppe degenerano in black-box \\
-FIGS\textbackslash{}\_MAX\textbackslash{}\_RULES & 10 & Alberi nella somma FIGS; oltre 10 si perde interpretabilita' \\
+RANDOM\_STATE & 42 & Seed fisso per riproducibilita' \\
+\rowcolor{ltrow}TEST\_SIZE & 0.20 & 20\% test ($\approx$60 campioni), mantenuto separato durante il tuning \\
+VAL\_SIZE & 0.20 & 20\% validation ($\approx$60 campioni) per la scelta degli iperparametri \\
+\rowcolor{ltrow}CV\_FOLDS & 10 & 10-fold CV su trainval ($\approx$240 campioni): stima robusta della stabilita' \\
+BRL\_MAX\_ITER & 20\,000 & Iterazioni MCMC per la convergenza (ridotto a 3\,000 durante il tuning) \\
+\rowcolor{ltrow}RULEFIT\_MAX\_RULES & 30 & Limita le regole candidate; troppe degenerano in black-box \\
+FIGS\_MAX\_RULES & 10 & Alberi nella somma FIGS; oltre 10 si perde interpretabilita' \\
 \bottomrule
 \end{tabular}}}
 \end{center}
@@ -506,7 +506,7 @@ le congiunzioni rimangono ridondanti dal punto di vista probabilistico.
 \begin{center}
 {\small\begin{tabular}{>{\raggedright\arraybackslash}p{0.5299\linewidth}>{\raggedright\arraybackslash}p{0.1827\linewidth}>{\raggedright\arraybackslash}p{0.2010\linewidth}}
 \toprule
-\cellcolor{tblhdr}\color{white}\bfseries Condizione & \cellcolor{tblhdr}\color{white}\bfseries P(decesso) & \cellcolor{tblhdr}\color{white}\bfseries IC 95\textbackslash{}\% \\
+\cellcolor{tblhdr}\color{white}\bfseries Condizione & \cellcolor{tblhdr}\color{white}\bfseries P(decesso) & \cellcolor{tblhdr}\color{white}\bfseries IC 95\% \\
 \midrule
 time $\in$ (6.00, 71.50] & 80.9\% & 68.6\%--90.6\% \\
 \rowcolor{ltrow}ejection\_fraction $\in$ (15.00, 30.00] & 46.7\% & 29.4\%--64.3\% \\
@@ -670,11 +670,11 @@ multi-condizionali.
 \cellcolor{tblhdr}\color{white}\bfseries Modello & \cellcolor{tblhdr}\color{white}\bfseries Accuracy & \cellcolor{tblhdr}\color{white}\bfseries F1 & \cellcolor{tblhdr}\color{white}\bfseries ROC-AUC \\
 \midrule
 RandomForest & 0.8667 & 0.7500 & 0.8960 \\
-\rowcolor{ltrow}RF\textbackslash{}\_no\textbackslash{}\_time & 0.7500 & 0.5161 & 0.7754 \\
+\rowcolor{ltrow}RF\_no\_time & 0.7500 & 0.5161 & 0.7754 \\
 GreedyRuleList & 0.8333 & 0.6667 & 0.8331 \\
-\rowcolor{ltrow}GRL\textbackslash{}\_no\textbackslash{}\_time & 0.6833 & 0.5366 & 0.7003 \\
+\rowcolor{ltrow}GRL\_no\_time & 0.6833 & 0.5366 & 0.7003 \\
 BayesianRuleList & 0.7500 & 0.6809 & 0.8408 \\
-\rowcolor{ltrow}BRL\textbackslash{}\_no\textbackslash{}\_time & 0.3167 & 0.4810 & 0.6528 \\
+\rowcolor{ltrow}BRL\_no\_time & 0.3167 & 0.4810 & 0.6528 \\
 \bottomrule
 \end{tabular}}}
 \end{center}
@@ -720,7 +720,7 @@ proprietà intrinseca del MCMC su questo dataset, indipendente dalla dominanza d
 \begin{center}
 {\small\begin{tabular}{>{\raggedright\arraybackslash}p{0.5299\linewidth}>{\raggedright\arraybackslash}p{0.1827\linewidth}>{\raggedright\arraybackslash}p{0.2010\linewidth}}
 \toprule
-\cellcolor{tblhdr}\color{white}\bfseries Condizione & \cellcolor{tblhdr}\color{white}\bfseries P(decesso) & \cellcolor{tblhdr}\color{white}\bfseries IC 95\textbackslash{}\% \\
+\cellcolor{tblhdr}\color{white}\bfseries Condizione & \cellcolor{tblhdr}\color{white}\bfseries P(decesso) & \cellcolor{tblhdr}\color{white}\bfseries IC 95\% \\
 \midrule
 ejection\_fraction $\in$ (15.00, 30.00] & 61.9\% & 46.9\%--75.8\% \\
 \rowcolor{ltrow}serum\_creatinine $\in$ (1.40, 6.80] & 53.1\% & 36.0\%--69.8\% \\
